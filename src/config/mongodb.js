@@ -21,6 +21,6 @@ export const CLOSE_DB = async () => {
 }
 
 export const GET_DB = () => {
-  if (!trelloDatabaseInstance) throw new Error('Must connect to database first!')
+  if (!trelloDatabaseInstance) throw new Error('Must connect to database first.')
   return trelloDatabaseInstance
 }

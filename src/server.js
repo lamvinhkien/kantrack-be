@@ -31,7 +31,7 @@ const START_SERVER = () => {
 (async () => {
   try {
     await CONNECT_DB()
-    console.log('Connected to MongoDB Cloud Atlas!')
+    console.log('Connected to MongoDB Cloud Atlas.')
     START_SERVER()
   } catch (error) {
     console.error(error)
