@@ -9,6 +9,7 @@ import { MailerSendProvider } from '~/providers/MailerSendProvider'
 import { MAILER_SEND_TEMPLATES_IDS } from '~/utils/constants'
 import { env } from '~/config/environment'
 import { JwtProvider } from '~/providers/JwtProvider'
+import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
 
 const createNew = async (reqBody) => {
   try {
@@ -103,7 +104,7 @@ const refreshToken = async (clientRefreshToken) => {
   } catch (error) { throw error }
 }
 
-const update = async (userId, reqBody) => {
+const update = async (userId, reqBody, userAvatarFile) => {
   try {
     const existUser = await userModel.findOneById(userId)
     if (!existUser) throw new ApiError(StatusCodes.NOT_FOUND, 'Account not found!')
@@ -114,6 +115,9 @@ const update = async (userId, reqBody) => {
     if (reqBody.current_password && reqBody.new_password) {
       if (!bcryptjs.compareSync(reqBody.current_password, existUser.password)) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your current password is incorrect.')
       updatedUser = await userModel.update(userId, { password: bcryptjs.hashSync(reqBody.new_password, 8) })
+    } else if (userAvatarFile) {
+      const uploadResult = await CloudinaryProvider.streamUpload(userAvatarFile.buffer, 'users')
+      updatedUser = await userModel.update(userId, { avatar: uploadResult.secure_url })
     } else {
       updatedUser = await userModel.update(userId, reqBody)
     }
