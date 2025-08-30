@@ -1,5 +1,5 @@
 import Joi from 'joi'
-import { OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE } from '~/utils/validators'
+import { OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE, EMAIL_RULE, EMAIL_RULE_MESSAGE } from '~/utils/validators'
 import { GET_DB } from '~/config/mongodb'
 import { ObjectId } from 'mongodb'
 
@@ -10,6 +10,17 @@ const CARD_COLLECTION_SCHEMA = Joi.object({
 
   title: Joi.string().required().min(3).max(50).trim().strict(),
   description: Joi.string().optional(),
+
+  cover: Joi.string().default(null),
+  memberIds: Joi.array().items(Joi.string().pattern(OBJECT_ID_RULE).message(OBJECT_ID_RULE_MESSAGE)).default([]),
+  comments: Joi.array().items({
+    userId: Joi.string().pattern(OBJECT_ID_RULE).message(OBJECT_ID_RULE_MESSAGE),
+    userEmail: Joi.string().pattern(EMAIL_RULE).message(EMAIL_RULE_MESSAGE),
+    userAvatar: Joi.string(),
+    userDisplayName: Joi.string(),
+    content: Joi.string(),
+    commentedAt: Joi.date().timestamp()
+  }).default([]),
 
   createdAt: Joi.date().timestamp('javascript').default(Date.now),
   updatedAt: Joi.date().timestamp('javascript').default(null),
