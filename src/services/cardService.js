@@ -19,7 +19,7 @@ const createNew = async (reqBody) => {
   } catch (error) { throw error }
 }
 
-const update = async (cardId, reqBody, cardCoverFile) => {
+const update = async (cardId, reqBody, cardCoverFile, userInfo) => {
   try {
     const updateData = {
       ...reqBody,
@@ -27,12 +27,23 @@ const update = async (cardId, reqBody, cardCoverFile) => {
     }
 
     let updatedCard = {}
+
     if (cardCoverFile) {
       const uploadResult = await CloudinaryProvider.streamUpload(cardCoverFile.buffer, 'card-covers')
       updatedCard = await cardModel.update(cardId, { cover: uploadResult.secure_url })
-    } else {
-      updatedCard = await cardModel.update(cardId, updateData)
     }
+
+    if (updateData.commentToAdd) {
+      const commetData = {
+        ...updateData.commentToAdd,
+        userId: userInfo._id,
+        userEmail: userInfo.email,
+        commentedAt: Date.now()
+      }
+      updatedCard = await cardModel.unshiftNewComment(cardId, commetData)
+    }
+
+    updatedCard = await cardModel.update(cardId, updateData)
 
     return updatedCard
   } catch (error) { throw error }

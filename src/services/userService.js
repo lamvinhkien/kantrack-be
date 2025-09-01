@@ -115,12 +115,14 @@ const update = async (userId, reqBody, userAvatarFile) => {
     if (reqBody.current_password && reqBody.new_password) {
       if (!bcryptjs.compareSync(reqBody.current_password, existUser.password)) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your current password is incorrect.')
       updatedUser = await userModel.update(userId, { password: bcryptjs.hashSync(reqBody.new_password, 8) })
-    } else if (userAvatarFile) {
+    }
+
+    if (userAvatarFile) {
       const uploadResult = await CloudinaryProvider.streamUpload(userAvatarFile.buffer, 'users')
       updatedUser = await userModel.update(userId, { avatar: uploadResult.secure_url })
-    } else {
-      updatedUser = await userModel.update(userId, reqBody)
     }
+
+    updatedUser = await userModel.update(userId, reqBody)
 
     return pickUser(updatedUser)
   } catch (error) { throw error }
