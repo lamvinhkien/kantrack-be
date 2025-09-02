@@ -11,4 +11,7 @@ Router.route('/board')
     invitationController.createNewBoardInvitation
   )
 
+Router.route('/')
+  .get(authMiddleware.isAuthorized, invitationController.getInvitations)
+
 export const invitationRoute = Router
