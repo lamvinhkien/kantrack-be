@@ -8,6 +8,9 @@ import { CONNECT_DB, CLOSE_DB } from '~/config/mongodb'
 import { corsOptions } from '~/config/cors'
 import { APIs_V1 } from '~/routes/v1'
 import { errorHandlingMiddleware } from '~/middlewares/errorHandlingMiddleware'
+import socketIo from 'socket.io'
+import http from 'http'
+import { inviteUserToBoardSocket } from '~/sockets/inviteUserToBoardSocket'
 
 const START_SERVER = () => {
   const app = express()
@@ -27,7 +30,15 @@ const START_SERVER = () => {
 
   app.use(errorHandlingMiddleware)
 
-  app.listen(env.LOCAL_DEV_APP_PORT, env.LOCAL_DEV_APP_HOST, () => {
+  const server = http.createServer(app)
+
+  const io = socketIo(server, { cors: corsOptions })
+
+  io.on('connection', (socket) => {
+    inviteUserToBoardSocket(socket)
+  })
+
+  server.listen(env.LOCAL_DEV_APP_PORT, env.LOCAL_DEV_APP_HOST, () => {
     console.log(`Server running at http://${env.LOCAL_DEV_APP_HOST}:${env.LOCAL_DEV_APP_PORT}`)
   })
 
