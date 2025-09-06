@@ -143,23 +143,28 @@ const pullColumnOrderIds = async (column) => {
   } catch (error) { throw new Error(error) }
 }
 
-const getBoards = async (userId, page, itemsPerPage) => {
+const getBoards = async (userId, page, itemsPerPage, queryFilters) => {
   try {
+    const queryConditions = [
+      { _destroy: false },
+      {
+        $or: [
+          { ownerIds: { $all: [new ObjectId(userId)] } },
+          { memberIds: { $all: [new ObjectId(userId)] } }
+        ]
+      }
+    ]
+
+    if (queryFilters) {
+      Object.keys(queryFilters).forEach(key => {
+        // queryConditions.push({ [key]: { $regex: queryFilters[key] } })
+        queryConditions.push({ [key]: { $regex: new RegExp(queryFilters[key], 'i') } })
+      })
+    }
+
     const result = await GET_DB().collection(BOARD_COLLECTION_NAME).aggregate(
       [
-        {
-          $match: {
-            $and: [
-              { _destroy: false },
-              {
-                $or: [
-                  { ownerIds: { $all: [new ObjectId(userId)] } },
-                  { memberIds: { $all: [new ObjectId(userId)] } }
-                ]
-              }
-            ]
-          }
-        },
+        { $match: { $and: queryConditions } },
         { $sort: { title: 1 } },
         {
           $facet: {
