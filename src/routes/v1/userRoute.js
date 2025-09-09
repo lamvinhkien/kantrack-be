@@ -24,4 +24,7 @@ Router.route('/refresh_token')
 Router.route('/update')
   .put(authMiddleware.isAuthorized, multerUploadMiddleware.upload.single('avatar'), userValidation.update, userController.update)
 
+Router.route('/get_2fa_qr_code')
+  .get(authMiddleware.isAuthorized, userController.get2FA_QRCode)
+
 export const userRoute = Router

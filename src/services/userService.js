@@ -10,6 +10,9 @@ import { MAILER_SEND_TEMPLATES_IDS } from '~/utils/constants'
 import { env } from '~/config/environment'
 import { JwtProvider } from '~/providers/JwtProvider'
 import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
+import { twoFactorSecretKeyModel } from '~/models/twoFactorSecretKeyModel'
+import { authenticator } from 'otplib'
+import qrcode from 'qrcode'
 
 const createNew = async (reqBody) => {
   try {
@@ -128,10 +131,41 @@ const update = async (userId, reqBody, userAvatarFile) => {
   } catch (error) { throw error }
 }
 
+const get2FA_QRCode = async (userId) => {
+  try {
+    const existUser = await userModel.findOneById(userId)
+    if (!existUser) throw new ApiError(StatusCodes.NOT_FOUND, 'Account not found!')
+    if (!existUser.isActive) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is not active!')
+
+    let twoFactorSecretKeyValue = null
+
+    const twoFactorSecretKey = await twoFactorSecretKeyModel.findOneByUserId(existUser._id)
+
+    if (!twoFactorSecretKey) {
+      const newTwoFactorSecretKey = await twoFactorSecretKeyModel.createNew(existUser._id, authenticator.generateSecret())
+
+      twoFactorSecretKeyValue = newTwoFactorSecretKey.value
+    } else {
+      twoFactorSecretKeyValue = twoFactorSecretKey.value
+    }
+
+    const otpAuthToken = authenticator.keyuri(
+      existUser.displayName,
+      'LAMVINHKIEN - 2FA',
+      twoFactorSecretKeyValue
+    )
+
+    const qrCodeImageURL = await qrcode.toDataURL(otpAuthToken)
+
+    return { qrcode: qrCodeImageURL }
+  } catch (error) { throw error }
+}
+
 export const userService = {
   createNew,
   verifyAccount,
   login,
   refreshToken,
-  update
+  update,
+  get2FA_QRCode
 }

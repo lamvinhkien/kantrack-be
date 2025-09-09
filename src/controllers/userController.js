@@ -59,11 +59,20 @@ const update = async (req, res, next) => {
   } catch (error) { next(error) }
 }
 
+const get2FA_QRCode = async (req, res, next) => {
+  try {
+    const userId = req.jwtDecoded._id
+    const result = await userService.get2FA_QRCode(userId)
+    res.status(StatusCodes.OK).json(result)
+  } catch (error) { next(error) }
+}
+
 export const userController = {
   createNew,
   verifyAccount,
   login,
   logout,
   refreshToken,
-  update
+  update,
+  get2FA_QRCode
 }
