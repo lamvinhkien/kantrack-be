@@ -12,6 +12,10 @@ const TWO_FACTOR_SECRET_KEY_COLLECTION_SCHEMA = Joi.object({
   _destroy: Joi.boolean().default(false)
 })
 
+const validateBeforeCreate = async (data) => {
+  return await TWO_FACTOR_SECRET_KEY_COLLECTION_SCHEMA.validateAsync(data, { abortEarly: false })
+}
+
 const findOneByUserId = async (userId) => {
   try {
     return await GET_DB().collection(TWO_FACTOR_SECRET_KEY_COLLECTION_NAME).findOne({ userId: new ObjectId(userId) })
@@ -20,9 +24,10 @@ const findOneByUserId = async (userId) => {
   }
 }
 
-const createNew = async (userId, value) => {
+const createNew = async (userId, data) => {
   try {
-    return await GET_DB().collection(TWO_FACTOR_SECRET_KEY_COLLECTION_NAME).insertOne({ userId: userId, value: value })
+    const validData = await validateBeforeCreate(data)
+    return await GET_DB().collection(TWO_FACTOR_SECRET_KEY_COLLECTION_NAME).insertOne({ ...validData, userId: new ObjectId(userId) })
   } catch (error) {
     throw new Error(error)
   }

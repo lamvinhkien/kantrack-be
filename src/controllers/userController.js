@@ -67,6 +67,16 @@ const get2FA_QRCode = async (req, res, next) => {
   } catch (error) { next(error) }
 }
 
+const setup2FA = async (req, res, next) => {
+  try {
+    const userId = req.jwtDecoded._id
+    const otpToken = req.body.otpToken
+    const deviceId = req.headers['user-agent']
+    const result = await userService.setup2FA(userId, otpToken, deviceId)
+    res.status(StatusCodes.OK).json(result)
+  } catch (error) { next(error) }
+}
+
 export const userController = {
   createNew,
   verifyAccount,
@@ -74,5 +84,6 @@ export const userController = {
   logout,
   refreshToken,
   update,
-  get2FA_QRCode
+  get2FA_QRCode,
+  setup2FA
 }

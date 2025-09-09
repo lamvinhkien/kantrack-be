@@ -11,6 +11,7 @@ import { env } from '~/config/environment'
 import { JwtProvider } from '~/providers/JwtProvider'
 import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
 import { twoFactorSecretKeyModel } from '~/models/twoFactorSecretKeyModel'
+import { userSessionModel } from '~/models/userSessionModel'
 import { authenticator } from 'otplib'
 import qrcode from 'qrcode'
 
@@ -110,8 +111,8 @@ const refreshToken = async (clientRefreshToken) => {
 const update = async (userId, reqBody, userAvatarFile) => {
   try {
     const existUser = await userModel.findOneById(userId)
-    if (!existUser) throw new ApiError(StatusCodes.NOT_FOUND, 'Account not found!')
-    if (!existUser.isActive) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is not active!')
+    if (!existUser) throw new ApiError(StatusCodes.NOT_FOUND, 'Account not found.')
+    if (!existUser.isActive) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is not active.')
 
     let updatedUser = {}
 
@@ -134,15 +135,18 @@ const update = async (userId, reqBody, userAvatarFile) => {
 const get2FA_QRCode = async (userId) => {
   try {
     const existUser = await userModel.findOneById(userId)
-    if (!existUser) throw new ApiError(StatusCodes.NOT_FOUND, 'Account not found!')
-    if (!existUser.isActive) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is not active!')
+    if (!existUser) throw new ApiError(StatusCodes.NOT_FOUND, 'Account not found.')
+    if (!existUser.isActive) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is not active.')
 
     let twoFactorSecretKeyValue = null
 
     const twoFactorSecretKey = await twoFactorSecretKeyModel.findOneByUserId(existUser._id)
 
     if (!twoFactorSecretKey) {
-      const newTwoFactorSecretKey = await twoFactorSecretKeyModel.createNew(existUser._id, authenticator.generateSecret())
+      const newTwoFactorSecretKey = await twoFactorSecretKeyModel.createNew(
+        existUser._id,
+        { value: authenticator.generateSecret() }
+      )
 
       twoFactorSecretKeyValue = newTwoFactorSecretKey.value
     } else {
@@ -150,14 +154,42 @@ const get2FA_QRCode = async (userId) => {
     }
 
     const otpAuthToken = authenticator.keyuri(
-      existUser.displayName,
-      'LAMVINHKIEN - 2FA',
+      existUser.email,
+      'TRELLO - 2FA',
       twoFactorSecretKeyValue
     )
 
-    const qrCodeImageURL = await qrcode.toDataURL(otpAuthToken)
+    const QRCodeImageURL = await qrcode.toDataURL(otpAuthToken)
 
-    return { qrcode: qrCodeImageURL }
+    return { qrcode: QRCodeImageURL }
+  } catch (error) { throw error }
+}
+
+const setup2FA = async (userId, otpToken, deviceId) => {
+  try {
+    const existUser = await userModel.findOneById(userId)
+    if (!existUser) throw new ApiError(StatusCodes.NOT_FOUND, 'Account not found.')
+    if (!existUser.isActive) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is not active.')
+
+    const twoFactorSecretKey = await twoFactorSecretKeyModel.findOneByUserId(existUser._id)
+    if (!twoFactorSecretKey) throw new ApiError(StatusCodes.NOT_FOUND, '2FA key not found.')
+
+    const isValid = authenticator.verify({
+      token: otpToken,
+      secret: twoFactorSecretKey.value
+    })
+    if (!isValid) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Invalid OTP token.')
+
+    const updatedUser = await userModel.update(existUser._id, { require2fa: true })
+
+    const createdUserSession = await userSessionModel.createNew(
+      existUser._id,
+      { deviceId: `${deviceId}-${Date.now().valueOf()}`, is2faVerified: true }
+    )
+
+    const getUserSession = await userSessionModel.findOneById(createdUserSession.insertedId)
+
+    return { ...pickUser(updatedUser), is2faVerified: getUserSession.is2faVerified }
   } catch (error) { throw error }
 }
 
@@ -167,5 +199,6 @@ export const userService = {
   login,
   refreshToken,
   update,
-  get2FA_QRCode
+  get2FA_QRCode,
+  setup2FA
 }

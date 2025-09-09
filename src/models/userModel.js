@@ -18,6 +18,7 @@ const USER_COLLECTION_SCHEMA = Joi.object({
   role: Joi.string().valid(...Object.values(USER_ROLES)).default(USER_ROLES.CLIENT),
   isActive: Joi.boolean().default(false),
   verifyToken: Joi.string(),
+  require2fa: Joi.boolean().default(false),
   createdAt: Joi.date().timestamp('javascript').default(Date.now),
   updatedAt: Joi.date().timestamp('javascript').default(null),
   _destroy: Joi.boolean().default(false)

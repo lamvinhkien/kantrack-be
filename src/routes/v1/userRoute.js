@@ -27,4 +27,7 @@ Router.route('/update')
 Router.route('/get_2fa_qr_code')
   .get(authMiddleware.isAuthorized, userController.get2FA_QRCode)
 
+Router.route('/setup_2fa')
+  .post(authMiddleware.isAuthorized, userController.setup2FA)
+
 export const userRoute = Router
