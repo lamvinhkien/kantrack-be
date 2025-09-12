@@ -16,7 +16,7 @@ Router.route('/login')
   .post(userValidation.login, userController.login)
 
 Router.route('/logout')
-  .delete(userController.logout)
+  .delete(authMiddleware.isAuthorized, userController.logout)
 
 Router.route('/refresh_token')
   .get(userController.refreshToken)

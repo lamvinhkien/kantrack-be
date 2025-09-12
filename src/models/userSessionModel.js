@@ -25,6 +25,16 @@ const findOneById = async (id) => {
   }
 }
 
+const findOneByUserAndDeviceId = async (userId, deviceId) => {
+  try {
+    return await GET_DB().collection(USER_SESSION_NAME).findOne(
+      { $and: [{ userId: new ObjectId(userId) }, { deviceId: deviceId }] }
+    )
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
 const createNew = async (userId, data) => {
   try {
     const validData = await validateBeforeCreate(data)
@@ -34,9 +44,21 @@ const createNew = async (userId, data) => {
   }
 }
 
+const deleteManyByUserAndDeviceId = async (userId, deviceId) => {
+  try {
+    return await GET_DB().collection(USER_SESSION_NAME).deleteMany(
+      { $and: [{ userId: new ObjectId(userId) }, { deviceId: deviceId }] }
+    )
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
 export const userSessionModel = {
   USER_SESSION_NAME,
   USER_SESSION_SCHEMA,
   createNew,
-  findOneById
+  findOneById,
+  findOneByUserAndDeviceId,
+  deleteManyByUserAndDeviceId
 }

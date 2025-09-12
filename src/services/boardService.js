@@ -1,5 +1,4 @@
 import ApiError from '~/utils/ApiError'
-import { slugify } from '~/utils/formatters'
 import { boardModel } from '~/models/boardModel'
 import { StatusCodes } from 'http-status-codes'
 import { cloneDeep } from 'lodash'
@@ -10,8 +9,7 @@ import { DEFAULT_PAGE, DEFAULT_ITEMS_PER_PAGE } from '~/utils/constants'
 const createNew = async (userId, reqBody) => {
   try {
     const newBoard = {
-      ...reqBody,
-      slug: slugify(reqBody.title)
+      ...reqBody
     }
 
     const createdBoard = await boardModel.createNew(userId, newBoard)

@@ -19,11 +19,13 @@ const verifyAccount = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   try {
-    const result = await userService.login(req.body)
+    const deviceId = req.headers['user-agent']
+    const result = await userService.login(req.body, deviceId)
 
-    res.cookie('accessToken', result.accessToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('7 days') })
-
-    res.cookie('refreshToken', result.refreshToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('7 days') })
+    if (result.accessToken && result.refreshToken) {
+      res.cookie('accessToken', result.accessToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('7 days') })
+      res.cookie('refreshToken', result.refreshToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('7 days') })
+    }
 
     res.status(StatusCodes.OK).json(result)
   } catch (error) { next(error) }
@@ -31,10 +33,16 @@ const login = async (req, res, next) => {
 
 const logout = async (req, res, next) => {
   try {
-    res.clearCookie('accessToken')
-    res.clearCookie('refreshToken')
+    const userId = req.jwtDecoded._id
+    const deviceId = req.headers['user-agent']
+    const result = await userService.logout(userId, deviceId)
 
-    res.status(StatusCodes.OK).json({ loggedOut: true })
+    if (result.isLoggedOut) {
+      res.clearCookie('accessToken')
+      res.clearCookie('refreshToken')
+    }
+
+    res.status(StatusCodes.OK).json(result)
   } catch (error) { next(error) }
 }
 

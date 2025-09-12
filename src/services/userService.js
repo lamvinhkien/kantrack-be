@@ -71,7 +71,7 @@ const verifyAccount = async (reqBody) => {
   } catch (error) { throw error }
 }
 
-const login = async (reqBody) => {
+const login = async (reqBody, deviceId) => {
   try {
     const existUser = await userModel.findOneByEmail(reqBody.email)
     if (!existUser) throw new ApiError(StatusCodes.NOT_FOUND, 'Account not found.')
@@ -82,7 +82,23 @@ const login = async (reqBody) => {
     const accessToken = await JwtProvider.generateToken(userInfo, env.ACCESS_TOKEN_SECRET_SIGNATURE, env.ACCESS_TOKEN_LIFE)
     const refreshToken = await JwtProvider.generateToken(userInfo, env.REFRESH_TOKEN_SECRET_SIGNATURE, env.REFRESH_TOKEN_LIFE)
 
-    return { accessToken, refreshToken, ...pickUser(existUser) }
+    const existSession = await userSessionModel.findOneByUserAndDeviceId(existUser._id, deviceId)
+    if (!existSession) throw new ApiError(StatusCodes.NOT_FOUND, 'Session not found.')
+
+    const newSession = await userSessionModel.createNew(existUser._id, { deviceId })
+    const getSession = await userSessionModel.findOneById(newSession.insertedId)
+
+    return { accessToken, refreshToken, ...pickUser(existUser), is2faVerified: getSession.is2faVerified }
+  } catch (error) { throw error }
+}
+
+const logout = async (userId, deviceId) => {
+  try {
+    const existSession = await userSessionModel.findOneByUserAndDeviceId(userId, deviceId)
+    if (!existSession) throw new ApiError(StatusCodes.NOT_FOUND, 'Session not found.')
+
+    const deletedSession = await userSessionModel.deleteManyByUserAndDeviceId(userId, deviceId)
+    return { isLoggedOut: deletedSession.acknowledged }
   } catch (error) { throw error }
 }
 
@@ -184,9 +200,8 @@ const setup2FA = async (userId, otpToken, deviceId) => {
 
     const createdUserSession = await userSessionModel.createNew(
       existUser._id,
-      { deviceId: `${deviceId}-${Date.now().valueOf()}`, is2faVerified: true }
+      { deviceId, is2faVerified: true }
     )
-
     const getUserSession = await userSessionModel.findOneById(createdUserSession.insertedId)
 
     return { ...pickUser(updatedUser), is2faVerified: getUserSession.is2faVerified }
@@ -197,6 +212,7 @@ export const userService = {
   createNew,
   verifyAccount,
   login,
+  logout,
   refreshToken,
   update,
   get2FA_QRCode,
