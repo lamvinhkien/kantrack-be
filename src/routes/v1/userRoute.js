@@ -30,4 +30,7 @@ Router.route('/get_2fa_qr_code')
 Router.route('/setup_2fa')
   .post(authMiddleware.isAuthorized, userController.setup2FA)
 
+Router.route('/verify_2fa')
+  .put(authMiddleware.isAuthorized, userController.verify2FA)
+
 export const userRoute = Router

@@ -16,6 +16,14 @@ const validateBeforeCreate = async (data) => {
   return await TWO_FACTOR_SECRET_KEY_COLLECTION_SCHEMA.validateAsync(data, { abortEarly: false })
 }
 
+const findOneById = async (id) => {
+  try {
+    return await GET_DB().collection(TWO_FACTOR_SECRET_KEY_COLLECTION_NAME).findOne({ _id: new ObjectId(id) })
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
 const findOneByUserId = async (userId) => {
   try {
     return await GET_DB().collection(TWO_FACTOR_SECRET_KEY_COLLECTION_NAME).findOne({ userId: new ObjectId(userId) })
@@ -36,6 +44,7 @@ const createNew = async (userId, data) => {
 export const twoFactorSecretKeyModel = {
   TWO_FACTOR_SECRET_KEY_COLLECTION_NAME,
   TWO_FACTOR_SECRET_KEY_COLLECTION_SCHEMA,
+  findOneById,
   findOneByUserId,
   createNew
 }

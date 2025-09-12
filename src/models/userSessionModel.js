@@ -20,9 +20,7 @@ const validateBeforeCreate = async (data) => {
 const findOneById = async (id) => {
   try {
     return await GET_DB().collection(USER_SESSION_NAME).findOne({ _id: new ObjectId(id) })
-  } catch (error) {
-    throw new Error(error)
-  }
+  } catch (error) { throw new Error(error) }
 }
 
 const findOneByUserAndDeviceId = async (userId, deviceId) => {
@@ -30,28 +28,38 @@ const findOneByUserAndDeviceId = async (userId, deviceId) => {
     return await GET_DB().collection(USER_SESSION_NAME).findOne(
       { $and: [{ userId: new ObjectId(userId) }, { deviceId: deviceId }] }
     )
-  } catch (error) {
-    throw new Error(error)
-  }
+  } catch (error) { throw new Error(error) }
 }
 
 const createNew = async (userId, data) => {
   try {
     const validData = await validateBeforeCreate(data)
     return await GET_DB().collection(USER_SESSION_NAME).insertOne({ ...validData, userId: new ObjectId(userId) })
-  } catch (error) {
-    throw new Error(error)
-  }
+  } catch (error) { throw new Error(error) }
 }
 
-const deleteManyByUserAndDeviceId = async (userId, deviceId) => {
+const deleteOneByUserAndDeviceId = async (userId, deviceId) => {
   try {
-    return await GET_DB().collection(USER_SESSION_NAME).deleteMany(
+    return await GET_DB().collection(USER_SESSION_NAME).deleteOne(
       { $and: [{ userId: new ObjectId(userId) }, { deviceId: deviceId }] }
     )
-  } catch (error) {
-    throw new Error(error)
-  }
+  } catch (error) { throw new Error(error) }
+}
+
+const deleteManyByUserId = async (userId) => {
+  try {
+    return await GET_DB().collection(USER_SESSION_NAME).deleteOne({ userId: new ObjectId(userId) })
+  } catch (error) { throw new Error(error) }
+}
+
+const update = async (userId, deviceId) => {
+  try {
+    return await GET_DB().collection(USER_SESSION_NAME).findOneAndUpdate(
+      { userId: new ObjectId(userId), deviceId: deviceId },
+      { $set: { is2faVerified: true } },
+      { returnDocument: 'after' }
+    )
+  } catch (error) { throw new Error(error) }
 }
 
 export const userSessionModel = {
@@ -60,5 +68,7 @@ export const userSessionModel = {
   createNew,
   findOneById,
   findOneByUserAndDeviceId,
-  deleteManyByUserAndDeviceId
+  deleteOneByUserAndDeviceId,
+  deleteManyByUserId,
+  update
 }

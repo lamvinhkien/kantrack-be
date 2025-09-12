@@ -82,23 +82,23 @@ const login = async (reqBody, deviceId) => {
     const accessToken = await JwtProvider.generateToken(userInfo, env.ACCESS_TOKEN_SECRET_SIGNATURE, env.ACCESS_TOKEN_LIFE)
     const refreshToken = await JwtProvider.generateToken(userInfo, env.REFRESH_TOKEN_SECRET_SIGNATURE, env.REFRESH_TOKEN_LIFE)
 
-    const existSession = await userSessionModel.findOneByUserAndDeviceId(existUser._id, deviceId)
-    if (!existSession) throw new ApiError(StatusCodes.NOT_FOUND, 'Session not found.')
+    let currentSession = await userSessionModel.findOneByUserAndDeviceId(existUser._id, deviceId)
+    if (!currentSession) {
+      const newSession = await userSessionModel.createNew(existUser._id, { deviceId })
+      currentSession = await userSessionModel.findOneById(newSession.insertedId)
+    }
 
-    const newSession = await userSessionModel.createNew(existUser._id, { deviceId })
-    const getSession = await userSessionModel.findOneById(newSession.insertedId)
-
-    return { accessToken, refreshToken, ...pickUser(existUser), is2faVerified: getSession.is2faVerified }
+    return { accessToken, refreshToken, ...pickUser(existUser), is2faVerified: currentSession.is2faVerified }
   } catch (error) { throw error }
 }
 
 const logout = async (userId, deviceId) => {
   try {
     const existSession = await userSessionModel.findOneByUserAndDeviceId(userId, deviceId)
-    if (!existSession) throw new ApiError(StatusCodes.NOT_FOUND, 'Session not found.')
+    if (existSession) await userSessionModel.deleteOneByUserAndDeviceId(userId, deviceId)
+    if (!existSession) await userSessionModel.deleteManyByUserId(userId)
 
-    const deletedSession = await userSessionModel.deleteManyByUserAndDeviceId(userId, deviceId)
-    return { isLoggedOut: deletedSession.acknowledged }
+    return { isLoggedOut: true }
   } catch (error) { throw error }
 }
 
@@ -163,8 +163,8 @@ const get2FA_QRCode = async (userId) => {
         existUser._id,
         { value: authenticator.generateSecret() }
       )
-
-      twoFactorSecretKeyValue = newTwoFactorSecretKey.value
+      const getTwoFactorSecretKey = await twoFactorSecretKeyModel.findOneById(newTwoFactorSecretKey.insertedId)
+      twoFactorSecretKeyValue = getTwoFactorSecretKey.value
     } else {
       twoFactorSecretKeyValue = twoFactorSecretKey.value
     }
@@ -183,6 +183,8 @@ const get2FA_QRCode = async (userId) => {
 
 const setup2FA = async (userId, otpToken, deviceId) => {
   try {
+    if (!deviceId) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Please login again.')
+
     const existUser = await userModel.findOneById(userId)
     if (!existUser) throw new ApiError(StatusCodes.NOT_FOUND, 'Account not found.')
     if (!existUser.isActive) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is not active.')
@@ -198,13 +200,32 @@ const setup2FA = async (userId, otpToken, deviceId) => {
 
     const updatedUser = await userModel.update(existUser._id, { require2fa: true })
 
-    const createdUserSession = await userSessionModel.createNew(
-      existUser._id,
-      { deviceId, is2faVerified: true }
-    )
-    const getUserSession = await userSessionModel.findOneById(createdUserSession.insertedId)
+    const updatedUserSession = await userSessionModel.update(userId, deviceId)
 
-    return { ...pickUser(updatedUser), is2faVerified: getUserSession.is2faVerified }
+    return { ...pickUser(updatedUser), is2faVerified: updatedUserSession.is2faVerified }
+  } catch (error) { throw error }
+}
+
+const verify2FA = async (userId, otpToken, deviceId) => {
+  try {
+    if (!deviceId) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Please login again.')
+
+    const existUser = await userModel.findOneById(userId)
+    if (!existUser) throw new ApiError(StatusCodes.NOT_FOUND, 'Account not found.')
+    if (!existUser.isActive) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is not active.')
+
+    const twoFactorSecretKey = await twoFactorSecretKeyModel.findOneByUserId(existUser._id)
+    if (!twoFactorSecretKey) throw new ApiError(StatusCodes.NOT_FOUND, '2FA key not found.')
+
+    const isValid = authenticator.verify({
+      token: otpToken,
+      secret: twoFactorSecretKey.value
+    })
+    if (!isValid) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Invalid OTP token.')
+
+    const updatedUserSession = await userSessionModel.update(userId, deviceId)
+
+    return { ...pickUser(existUser), is2faVerified: updatedUserSession.is2faVerified }
   } catch (error) { throw error }
 }
 
@@ -216,5 +237,6 @@ export const userService = {
   refreshToken,
   update,
   get2FA_QRCode,
-  setup2FA
+  setup2FA,
+  verify2FA
 }

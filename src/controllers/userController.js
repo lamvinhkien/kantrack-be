@@ -1,5 +1,6 @@
 import { StatusCodes } from 'http-status-codes'
 import { userService } from '~/services/userService'
+import { v4 as uuidv4 } from 'uuid'
 import ApiError from '~/utils/ApiError'
 import ms from 'ms'
 
@@ -19,13 +20,12 @@ const verifyAccount = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   try {
-    const deviceId = req.headers['user-agent']
+    const deviceId = req.cookies.deviceId ? req.cookies.deviceId : uuidv4()
     const result = await userService.login(req.body, deviceId)
 
-    if (result.accessToken && result.refreshToken) {
-      res.cookie('accessToken', result.accessToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('7 days') })
-      res.cookie('refreshToken', result.refreshToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('7 days') })
-    }
+    res.cookie('deviceId', deviceId, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('7 days') })
+    res.cookie('accessToken', result.accessToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('7 days') })
+    res.cookie('refreshToken', result.refreshToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('7 days') })
 
     res.status(StatusCodes.OK).json(result)
   } catch (error) { next(error) }
@@ -34,13 +34,12 @@ const login = async (req, res, next) => {
 const logout = async (req, res, next) => {
   try {
     const userId = req.jwtDecoded._id
-    const deviceId = req.headers['user-agent']
+    const deviceId = req.cookies?.deviceId
     const result = await userService.logout(userId, deviceId)
 
-    if (result.isLoggedOut) {
-      res.clearCookie('accessToken')
-      res.clearCookie('refreshToken')
-    }
+    res.clearCookie('deviceId')
+    res.clearCookie('accessToken')
+    res.clearCookie('refreshToken')
 
     res.status(StatusCodes.OK).json(result)
   } catch (error) { next(error) }
@@ -79,8 +78,18 @@ const setup2FA = async (req, res, next) => {
   try {
     const userId = req.jwtDecoded._id
     const otpToken = req.body.otpToken
-    const deviceId = req.headers['user-agent']
+    const deviceId = req.cookies.deviceId ? req.cookies.deviceId : null
     const result = await userService.setup2FA(userId, otpToken, deviceId)
+    res.status(StatusCodes.OK).json(result)
+  } catch (error) { next(error) }
+}
+
+const verify2FA = async (req, res, next) => {
+  try {
+    const userId = req.jwtDecoded._id
+    const otpToken = req.body.otpToken
+    const deviceId = req.cookies.deviceId ? req.cookies.deviceId : null
+    const result = await userService.verify2FA(userId, otpToken, deviceId)
     res.status(StatusCodes.OK).json(result)
   } catch (error) { next(error) }
 }
@@ -93,5 +102,6 @@ export const userController = {
   refreshToken,
   update,
   get2FA_QRCode,
-  setup2FA
+  setup2FA,
+  verify2FA
 }
