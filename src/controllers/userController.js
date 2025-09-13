@@ -78,8 +78,9 @@ const setup2FA = async (req, res, next) => {
   try {
     const userId = req.jwtDecoded._id
     const otpToken = req.body.otpToken
+    const action = req.body.action2FA
     const deviceId = req.cookies.deviceId ? req.cookies.deviceId : null
-    const result = await userService.setup2FA(userId, otpToken, deviceId)
+    const result = await userService.setup2FA(userId, otpToken, action, deviceId)
     res.status(StatusCodes.OK).json(result)
   } catch (error) { next(error) }
 }

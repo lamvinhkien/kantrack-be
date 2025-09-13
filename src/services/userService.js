@@ -13,6 +13,7 @@ import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
 import { twoFactorSecretKeyModel } from '~/models/twoFactorSecretKeyModel'
 import { userSessionModel } from '~/models/userSessionModel'
 import { authenticator } from 'otplib'
+import { SETUP_2FA_ACTIONS } from '~/utils/constants'
 import qrcode from 'qrcode'
 
 const createNew = async (reqBody) => {
@@ -181,7 +182,7 @@ const get2FA_QRCode = async (userId) => {
   } catch (error) { throw error }
 }
 
-const setup2FA = async (userId, otpToken, deviceId) => {
+const setup2FA = async (userId, otpToken, action2FA, deviceId) => {
   try {
     if (!deviceId) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Please login again.')
 
@@ -198,7 +199,9 @@ const setup2FA = async (userId, otpToken, deviceId) => {
     })
     if (!isValid) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Invalid OTP token.')
 
-    const updatedUser = await userModel.update(existUser._id, { require2fa: true })
+    let updatedUser = {}
+    if (action2FA === SETUP_2FA_ACTIONS.ENABLE) updatedUser = await userModel.update(existUser._id, { require2fa: true })
+    if (action2FA === SETUP_2FA_ACTIONS.DISABLE) updatedUser = await userModel.update(existUser._id, { require2fa: false })
 
     const updatedUserSession = await userSessionModel.update(userId, deviceId)
 
