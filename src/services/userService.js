@@ -78,15 +78,17 @@ const login = async (reqBody, deviceId) => {
     if (!existUser.isActive) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is not active, please verify email.')
     if (!bcryptjs.compareSync(reqBody.password, existUser.password)) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your email or password is incorrect.')
 
-    const userInfo = { _id: existUser._id, email: existUser.email }
-    const accessToken = await JwtProvider.generateToken(userInfo, env.ACCESS_TOKEN_SECRET_SIGNATURE, env.ACCESS_TOKEN_LIFE)
-    const refreshToken = await JwtProvider.generateToken(userInfo, env.REFRESH_TOKEN_SECRET_SIGNATURE, env.REFRESH_TOKEN_LIFE)
-
     let currentSession = await userSessionModel.findOneByUserAndDeviceId(existUser._id, deviceId)
     if (!currentSession) {
       const newSession = await userSessionModel.createNew(existUser._id, { deviceId })
       currentSession = await userSessionModel.findOneById(newSession.insertedId)
     }
+
+    if (existUser.require2fa) return { email: existUser.email, require2fa: existUser.require2fa, is2faVerified: currentSession.is2faVerified }
+
+    const userInfo = { _id: existUser._id, email: existUser.email }
+    const accessToken = await JwtProvider.generateToken(userInfo, env.ACCESS_TOKEN_SECRET_SIGNATURE, env.ACCESS_TOKEN_LIFE)
+    const refreshToken = await JwtProvider.generateToken(userInfo, env.REFRESH_TOKEN_SECRET_SIGNATURE, env.REFRESH_TOKEN_LIFE)
 
     return { accessToken, refreshToken, ...pickUser(existUser), is2faVerified: currentSession.is2faVerified }
   } catch (error) { throw error }
@@ -124,8 +126,10 @@ const refreshToken = async (clientRefreshToken) => {
   } catch (error) { throw error }
 }
 
-const update = async (userId, reqBody, userAvatarFile) => {
+const update = async (userId, reqBody, userAvatarFile, deviceId) => {
   try {
+    if (!deviceId) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Please login again.')
+
     const existUser = await userModel.findOneById(userId)
     if (!existUser) throw new ApiError(StatusCodes.NOT_FOUND, 'Account not found.')
     if (!existUser.isActive) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is not active.')
@@ -144,7 +148,9 @@ const update = async (userId, reqBody, userAvatarFile) => {
 
     updatedUser = await userModel.update(userId, reqBody)
 
-    return pickUser(updatedUser)
+    const currentSession = await userSessionModel.findOneByUserAndDeviceId(existUser._id, deviceId)
+
+    return { ...pickUser(updatedUser), is2faVerified: currentSession.is2faVerified }
   } catch (error) { throw error }
 }
 
@@ -200,11 +206,11 @@ const setup2FA = async (userId, otpToken, action2FA, deviceId) => {
   } catch (error) { throw error }
 }
 
-const verify2FA = async (userId, otpToken, deviceId) => {
+const verify2FA = async (email, otpToken, deviceId) => {
   try {
     if (!deviceId) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Please login again.')
 
-    const existUser = await userModel.findOneById(userId)
+    const existUser = await userModel.findOneByEmail(email)
     if (!existUser) throw new ApiError(StatusCodes.NOT_FOUND, 'Account not found.')
     if (!existUser.isActive) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is not active.')
     if (!existUser.secretKey2fa) throw new ApiError(StatusCodes.NOT_FOUND, '2FA key not found.')
@@ -215,9 +221,12 @@ const verify2FA = async (userId, otpToken, deviceId) => {
     })
     if (!isValid) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Invalid OTP token.')
 
-    const updatedUserSession = await userSessionModel.update(userId, deviceId)
+    const updatedUserSession = await userSessionModel.update(existUser._id, deviceId)
+    const userInfo = { _id: existUser._id, email: existUser.email }
+    const accessToken = await JwtProvider.generateToken(userInfo, env.ACCESS_TOKEN_SECRET_SIGNATURE, env.ACCESS_TOKEN_LIFE)
+    const refreshToken = await JwtProvider.generateToken(userInfo, env.REFRESH_TOKEN_SECRET_SIGNATURE, env.REFRESH_TOKEN_LIFE)
 
-    return { ...pickUser(existUser), is2faVerified: updatedUserSession.is2faVerified }
+    return { accessToken, refreshToken, ...pickUser(existUser), is2faVerified: updatedUserSession.is2faVerified }
   } catch (error) { throw error }
 }
 
