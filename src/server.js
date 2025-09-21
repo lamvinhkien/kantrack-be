@@ -10,7 +10,8 @@ import { APIs_V1 } from '~/routes/v1'
 import { errorHandlingMiddleware } from '~/middlewares/errorHandlingMiddleware'
 import socketIo from 'socket.io'
 import http from 'http'
-import { inviteUserToBoardSocket } from '~/sockets/inviteUserToBoardSocket'
+import { boardSocket } from './sockets/boardSocket'
+import { inviteSocket } from './sockets/inviteSocket'
 
 const START_SERVER = () => {
   const app = express()
@@ -35,7 +36,8 @@ const START_SERVER = () => {
   const io = socketIo(server, { cors: corsOptions })
 
   io.on('connection', (socket) => {
-    inviteUserToBoardSocket(socket)
+    inviteSocket(socket)
+    boardSocket(socket)
   })
 
   server.listen(env.LOCAL_DEV_APP_PORT, env.LOCAL_DEV_APP_HOST, () => {
