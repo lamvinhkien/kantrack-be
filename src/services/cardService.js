@@ -1,6 +1,8 @@
 import { cardModel } from '~/models/cardModel'
 import { columnModel } from '~/models/columnModel'
 import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
+import { CARD_ATTACHMENT_ACTIONS } from '~/utils/constants'
+import { v4 as uuidv4 } from 'uuid'
 
 const createNew = async (reqBody) => {
   try {
@@ -26,16 +28,20 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
       updatedAt: Date.now()
     }
 
-    let updatedCard = {}
-
     if (cardCoverFile) {
       const uploadResult = await CloudinaryProvider.streamUpload(cardCoverFile.buffer, 'card-covers')
-      updatedCard = await cardModel.update(cardId, { cover: uploadResult.secure_url })
+      return await cardModel.update(cardId, { cover: uploadResult.secure_url })
     }
 
     if (updateData.link) {
-      const newLink = { attachment: updateData.link, type: 'link', displayText: updateData?.displayText, uploadedAt: Date.now() }
-      updatedCard = await cardModel.unshiftNewAttachments(cardId, [newLink])
+      const newLink = {
+        attachmentId: uuidv4(),
+        attachment: updateData.link,
+        type: 'link',
+        displayText: updateData.displayText,
+        uploadedAt: Date.now()
+      }
+      return await cardModel.unshiftNewAttachments(cardId, [newLink])
     }
 
     if (cardAttachmentFiles && cardAttachmentFiles.length > 0) {
@@ -47,6 +53,7 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
 
       const newAttach = uploadResults.map((r, idx) => {
         return {
+          attachmentId: uuidv4(),
           attachment: r.secure_url,
           type: 'file',
           displayText: cardAttachmentFiles[idx].originalname,
@@ -54,7 +61,25 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
         }
       })
 
-      updatedCard = await cardModel.unshiftNewAttachments(cardId, newAttach)
+      return await cardModel.unshiftNewAttachments(cardId, newAttach)
+    }
+
+    if (updateData.action && updateData.newAttachment) {
+      const currentCard = await cardModel.findOneById(cardId)
+
+      if (updateData.action === CARD_ATTACHMENT_ACTIONS.EDIT) {
+        currentCard.attachments.find(a => {
+          if (a.attachmentId === updateData.newAttachment.attachmentId) a.displayText = updateData.newAttachment.displayText
+        })
+        return await cardModel.update(cardId, currentCard)
+      }
+
+      if (updateData.action === CARD_ATTACHMENT_ACTIONS.REMOVE) {
+        currentCard.attachments = currentCard.attachments.filter(
+          a => a.attachmentId !== updateData.newAttachment.attachmentId
+        )
+        return await cardModel.update(cardId, currentCard)
+      }
     }
 
     if (updateData.commentToAdd) {
@@ -64,16 +89,14 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
         userEmail: userInfo.email,
         commentedAt: Date.now()
       }
-      updatedCard = await cardModel.unshiftNewComment(cardId, commetData)
+      return await cardModel.unshiftNewComment(cardId, commetData)
     }
 
     if (updateData.incomingMemberInfo) {
-      updatedCard = await cardModel.updateMembers(cardId, updateData.incomingMemberInfo)
+      return await cardModel.updateMembers(cardId, updateData.incomingMemberInfo)
     }
 
-    updatedCard = await cardModel.update(cardId, updateData)
-
-    return updatedCard
+    return await cardModel.update(cardId, updateData)
   } catch (error) { throw error }
 }
 

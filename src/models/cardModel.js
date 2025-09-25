@@ -11,8 +11,9 @@ const CARD_COLLECTION_SCHEMA = Joi.object({
   title: Joi.string().required().min(3).max(50).trim().strict(),
   description: Joi.string().optional(),
   attachments: Joi.array().items({
-    attachment: Joi.string().default(null),
-    displayText: Joi.string().default(null),
+    attachmentId: Joi.string(),
+    attachment: Joi.string(),
+    displayText: Joi.string(),
     type: Joi.string(),
     uploadedAt: Joi.date().timestamp()
   }).default([]),
