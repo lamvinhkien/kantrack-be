@@ -19,7 +19,7 @@ const createNew = async (reqBody) => {
   } catch (error) { throw error }
 }
 
-const update = async (cardId, reqBody, cardCoverFile, userInfo) => {
+const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userInfo) => {
   try {
     const updateData = {
       ...reqBody,
@@ -31,6 +31,30 @@ const update = async (cardId, reqBody, cardCoverFile, userInfo) => {
     if (cardCoverFile) {
       const uploadResult = await CloudinaryProvider.streamUpload(cardCoverFile.buffer, 'card-covers')
       updatedCard = await cardModel.update(cardId, { cover: uploadResult.secure_url })
+    }
+
+    if (updateData.link) {
+      const newLink = { attachment: updateData.link, type: 'link', displayText: updateData?.displayText, uploadedAt: Date.now() }
+      updatedCard = await cardModel.unshiftNewAttachments(cardId, [newLink])
+    }
+
+    if (cardAttachmentFiles && cardAttachmentFiles.length > 0) {
+      const uploadResults = await Promise.all(
+        cardAttachmentFiles.map(file =>
+          CloudinaryProvider.streamUpload(file.buffer, 'card-attachments')
+        )
+      )
+
+      const newAttach = uploadResults.map((r, idx) => {
+        return {
+          attachment: r.secure_url,
+          type: 'file',
+          displayText: cardAttachmentFiles[idx].originalname,
+          uploadedAt: Date.now()
+        }
+      })
+
+      updatedCard = await cardModel.unshiftNewAttachments(cardId, newAttach)
     }
 
     if (updateData.commentToAdd) {
