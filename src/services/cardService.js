@@ -29,7 +29,7 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
     }
 
     if (cardCoverFile) {
-      const uploadResult = await CloudinaryProvider.streamUpload(cardCoverFile.buffer, 'card-covers')
+      const uploadResult = await CloudinaryProvider.streamUpload(cardCoverFile.buffer, 'card-covers', 'image', cardCoverFile.originalname)
       return await cardModel.update(cardId, { cover: uploadResult.secure_url })
     }
 
@@ -38,7 +38,7 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
         attachmentId: uuidv4(),
         attachment: updateData.link,
         type: 'link',
-        displayText: updateData.displayText,
+        displayText: updateData.displayText ? updateData.displayText : updateData.link,
         uploadedAt: Date.now()
       }
       return await cardModel.unshiftNewAttachments(cardId, [newLink])
@@ -47,7 +47,7 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
     if (cardAttachmentFiles && cardAttachmentFiles.length > 0) {
       const uploadResults = await Promise.all(
         cardAttachmentFiles.map(file =>
-          CloudinaryProvider.streamUpload(file.buffer, 'card-attachments')
+          CloudinaryProvider.streamUpload(file.buffer, 'card-attachments', 'auto', file.originalname)
         )
       )
 
