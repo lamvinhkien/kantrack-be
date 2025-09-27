@@ -38,7 +38,7 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
         attachmentId: uuidv4(),
         attachment: updateData.link,
         type: 'link',
-        displayText: updateData.displayText ? updateData.displayText : updateData.link,
+        displayText: updateData?.displayText,
         uploadedAt: Date.now()
       }
       return await cardModel.unshiftNewAttachments(cardId, [newLink])
@@ -69,7 +69,13 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
 
       if (updateData.action === CARD_ATTACHMENT_ACTIONS.EDIT) {
         currentCard.attachments.find(a => {
-          if (a.attachmentId === updateData.newAttachment.attachmentId) a.displayText = updateData.newAttachment.displayText
+          if (a.attachmentId === updateData.newAttachment.attachmentId) {
+            if (updateData.newAttachment.newLink) {
+              a.attachment = updateData.newAttachment.newLink
+            }
+
+            a.displayText = updateData.newAttachment.displayText
+          }
         })
         return await cardModel.update(cardId, currentCard)
       }

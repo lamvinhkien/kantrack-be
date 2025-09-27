@@ -25,7 +25,7 @@ const login = async (req, res, next) => {
 
     if (result.accessToken && result.refreshToken) {
       res.cookie('accessToken', result.accessToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('7 days') })
-      res.cookie('refreshToken', result.refreshToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('7 days') })
+      res.cookie('refreshToken', result.refreshToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('14 days') })
     }
 
     res.cookie('deviceId', deviceId, { httpOnly: true, secure: true, sameSite: 'none' })
@@ -96,7 +96,7 @@ const verify2FA = async (req, res, next) => {
 
     if (result.accessToken && result.refreshToken) {
       res.cookie('accessToken', result.accessToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('7 days') })
-      res.cookie('refreshToken', result.refreshToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('7 days') })
+      res.cookie('refreshToken', result.refreshToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('14 days') })
     }
 
     res.status(StatusCodes.OK).json(result)

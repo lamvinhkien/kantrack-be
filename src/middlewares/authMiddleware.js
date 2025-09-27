@@ -7,7 +7,7 @@ const isAuthorized = async (req, res, next) => {
   const clientAccessToken = req.cookies?.accessToken
 
   if (!clientAccessToken) {
-    next(new ApiError(StatusCodes.UNAUTHORIZED, 'Unauthorized. (Token not found)'))
+    next(new ApiError(StatusCodes.UNAUTHORIZED, 'Unauthorized.'))
     return
   }
 
