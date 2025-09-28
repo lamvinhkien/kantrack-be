@@ -5,20 +5,19 @@ import { LIMIT_COMMON_FILE_SIZE, ALLOW_COMMON_FILE_TYPES } from '~/utils/validat
 
 const storage = multer.memoryStorage()
 
-const fileFilter = (req, file, cb) => {
-  const isImageField = file.fieldname === 'cardCover'
+const IMAGE_FIELDS = ['cardCover', 'userAvatar']
 
-  if (isImageField) {
-    if (!ALLOW_COMMON_FILE_TYPES.includes(file.mimetype)) {
-      return cb(
-        new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, 'Card cover must be jpg/jpeg/png'),
-        false
-      )
-    }
+const fileFilter = (req, file, cb) => {
+  const isImageField = IMAGE_FIELDS.includes(file.fieldname)
+
+  if (isImageField && !ALLOW_COMMON_FILE_TYPES.includes(file.mimetype)) {
+    return cb(
+      new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, 'File must be an image'),
+      false
+    )
   }
 
   file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8')
-
   cb(null, true)
 }
 

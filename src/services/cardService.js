@@ -31,7 +31,7 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
 
     if (cardCoverFile) {
       const currentCard = await cardModel.findOneById(cardId)
-      if (currentCard.cover.attachment && currentCard.cover.publicId) {
+      if (currentCard.cover?.attachment && currentCard.cover?.publicId) {
         await CloudinaryProvider.deleteFile(currentCard.cover.publicId)
       }
 
@@ -47,7 +47,7 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
 
     if (updateData.coverToDelete) {
       const currentCard = await cardModel.findOneById(cardId)
-      if (currentCard.cover.attachment && currentCard.cover.publicId) {
+      if (currentCard.cover?.attachment === updateData.coverToDelete.attachment && currentCard.cover?.publicId === updateData.coverToDelete.publicId) {
         await CloudinaryProvider.deleteFile(currentCard.cover.publicId)
         currentCard.cover = { attachment: null, publicId: null }
       }

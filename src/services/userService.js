@@ -36,7 +36,7 @@ const createNew = async (reqBody) => {
 
     const to = getNewUser.email
     const toName = getNewUser.username
-    const subject = 'Created account successfully.'
+    const subject = 'Account created.'
     const templateId = MAILER_SEND_TEMPLATES_IDS.REGISTER_ACCOUNT
     const personalizetionData = [
       {
@@ -142,8 +142,18 @@ const update = async (userId, reqBody, userAvatarFile, deviceId) => {
     }
 
     if (userAvatarFile) {
-      const uploadResult = await CloudinaryProvider.streamUpload(userAvatarFile.buffer, 'users')
-      updatedUser = await userModel.update(userId, { avatar: uploadResult.secure_url })
+      if (existUser.avatar?.attachment && existUser.avatar?.publicId) {
+        await CloudinaryProvider.deleteFile(existUser.avatar.publicId)
+      }
+
+      const uploadResult = await CloudinaryProvider.streamUpload(
+        userAvatarFile.buffer,
+        'user-avatars',
+        'image',
+        `${uuidv4()}-${userAvatarFile.originalname}`
+      )
+
+      updatedUser = await userModel.update(userId, { avatar: { attachment: uploadResult.secure_url, publicId: uploadResult.public_id } })
     }
 
     updatedUser = await userModel.update(userId, reqBody)
