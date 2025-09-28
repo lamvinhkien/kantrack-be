@@ -11,13 +11,18 @@ const CARD_COLLECTION_SCHEMA = Joi.object({
   title: Joi.string().required().min(3).max(50).trim().strict(),
   description: Joi.string().optional(),
   attachments: Joi.array().items({
-    attachmentId: Joi.string(),
-    attachment: Joi.string(),
+    attachmentId: Joi.string().required(),
+    attachment: Joi.string().required(),
+    publicId: Joi.string().required().default(null),
     displayText: Joi.string(),
-    type: Joi.string(),
-    uploadedAt: Joi.date().timestamp()
+    type: Joi.string().required(),
+    uploadedAt: Joi.date().timestamp(),
+    size: Joi.number().required().default(null)
   }).default([]),
-  cover: Joi.string().default(null),
+  cover: Joi.object({
+    attachment: Joi.string().required().default(null),
+    publicId: Joi.string().required().default(null)
+  }).default(null),
   memberIds: Joi.array().items(Joi.string().pattern(OBJECT_ID_RULE).message(OBJECT_ID_RULE_MESSAGE)).default([]),
   comments: Joi.array().items({
     userId: Joi.string().pattern(OBJECT_ID_RULE).message(OBJECT_ID_RULE_MESSAGE),

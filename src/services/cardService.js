@@ -3,6 +3,7 @@ import { columnModel } from '~/models/columnModel'
 import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
 import { CARD_ATTACHMENT_ACTIONS } from '~/utils/constants'
 import { v4 as uuidv4 } from 'uuid'
+import { normalizeFileName } from '~/utils/formatters'
 
 const createNew = async (reqBody) => {
   try {
@@ -29,16 +30,38 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
     }
 
     if (cardCoverFile) {
-      const uploadResult = await CloudinaryProvider.streamUpload(cardCoverFile.buffer, 'card-covers', 'image', cardCoverFile.originalname)
-      return await cardModel.update(cardId, { cover: uploadResult.secure_url })
+      const currentCard = await cardModel.findOneById(cardId)
+      if (currentCard.cover.attachment && currentCard.cover.publicId) {
+        await CloudinaryProvider.deleteFile(currentCard.cover.publicId)
+      }
+
+      const uploadResult = await CloudinaryProvider.streamUpload(
+        cardCoverFile.buffer,
+        'card-covers',
+        'image',
+        `${uuidv4()}-${cardCoverFile.originalname}`
+      )
+
+      return await cardModel.update(cardId, { cover: { attachment: uploadResult.secure_url, publicId: uploadResult.public_id } })
+    }
+
+    if (updateData.coverToDelete) {
+      const currentCard = await cardModel.findOneById(cardId)
+      if (currentCard.cover.attachment && currentCard.cover.publicId) {
+        await CloudinaryProvider.deleteFile(currentCard.cover.publicId)
+        currentCard.cover = { attachment: null, publicId: null }
+      }
+      return await cardModel.update(cardId, currentCard)
     }
 
     if (updateData.link) {
       const newLink = {
         attachmentId: uuidv4(),
         attachment: updateData.link,
+        publicId: null,
         type: 'link',
         displayText: updateData?.displayText,
+        size: null,
         uploadedAt: Date.now()
       }
       return await cardModel.unshiftNewAttachments(cardId, [newLink])
@@ -46,17 +69,24 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
 
     if (cardAttachmentFiles && cardAttachmentFiles.length > 0) {
       const uploadResults = await Promise.all(
-        cardAttachmentFiles.map(file =>
-          CloudinaryProvider.streamUpload(file.buffer, 'card-attachments', 'auto', file.originalname)
-        )
+        cardAttachmentFiles.map(file => {
+          return CloudinaryProvider.streamUpload(
+            file.buffer,
+            'card-attachments',
+            'auto',
+            `${uuidv4()}-${file.originalname}`
+          )
+        })
       )
 
       const newAttach = uploadResults.map((r, idx) => {
         return {
           attachmentId: uuidv4(),
           attachment: r.secure_url,
+          publicId: r.public_id,
           type: 'file',
-          displayText: cardAttachmentFiles[idx].originalname,
+          displayText: normalizeFileName(cardAttachmentFiles[idx].originalname),
+          size: cardAttachmentFiles[idx].size,
           uploadedAt: Date.now()
         }
       })
@@ -81,9 +111,18 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
       }
 
       if (updateData.action === CARD_ATTACHMENT_ACTIONS.REMOVE) {
+        const attachmentToDelete = currentCard.attachments.find(
+          a => a.attachmentId === updateData.newAttachment.attachmentId
+        )
+
+        if (attachmentToDelete && attachmentToDelete.publicId) {
+          await CloudinaryProvider.deleteFile(attachmentToDelete.publicId)
+        }
+
         currentCard.attachments = currentCard.attachments.filter(
           a => a.attachmentId !== updateData.newAttachment.attachmentId
         )
+
         return await cardModel.update(cardId, currentCard)
       }
     }

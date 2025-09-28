@@ -29,4 +29,19 @@ const streamUpload = (fileBuffer, folderName, resourceType = 'auto', originalFil
   })
 }
 
-export const CloudinaryProvider = { streamUpload }
+const deleteFile = async (publicId) => {
+  const resourceTypes = ['image', 'video', 'raw']
+
+  for (const type of resourceTypes) {
+    try {
+      const result = await cloudinary.uploader.destroy(publicId, { resource_type: type })
+      if (result.result === 'ok' || result.result === 'not_found') {
+        return result
+      }
+    } catch (err) { throw err }
+  }
+
+  return { result: 'not_found' }
+}
+
+export const CloudinaryProvider = { streamUpload, deleteFile }
