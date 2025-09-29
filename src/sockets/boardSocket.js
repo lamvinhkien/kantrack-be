@@ -7,6 +7,10 @@ export const boardSocket = (socket) => {
     socket.leave(boardId)
   })
 
+  socket.on('FE_UPDATE_BOARD_TITLE', ({ boardId, board }) => {
+    socket.to(boardId).emit('BE_UPDATE_BOARD_TITLE', board)
+  })
+
   socket.on('FE_MOVE_COLUMN_IN_BOARD', ({ boardId, board }) => {
     socket.to(boardId).emit('BE_MOVE_COLUMN_IN_BOARD', board)
   })
