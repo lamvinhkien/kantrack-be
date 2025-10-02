@@ -28,7 +28,7 @@ const login = async (req, res, next) => {
       res.cookie('refreshToken', result.refreshToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('14 days') })
     }
 
-    res.cookie('deviceId', deviceId, { httpOnly: true, secure: true, sameSite: 'none' })
+    res.cookie('deviceId', deviceId, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('365 days') })
     res.status(StatusCodes.OK).json(result)
   } catch (error) { next(error) }
 }
