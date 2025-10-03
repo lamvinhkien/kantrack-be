@@ -3,6 +3,7 @@ import { boardModel } from '~/models/boardModel'
 import { cardModel } from '~/models/cardModel'
 import ApiError from '~/utils/ApiError'
 import { StatusCodes } from 'http-status-codes'
+import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
 
 const createNew = async (reqBody) => {
   try {
@@ -40,9 +41,26 @@ const deleteItem = async (columnId) => {
       throw new ApiError(StatusCodes.NOT_FOUND, 'Column not found.')
     }
 
-    await columnModel.deleteOneById(columnId)
+    const cards = await cardModel.findAllByColumnId(columnId)
+
+    for (const card of cards) {
+      if (card.cover?.publicId) {
+        await CloudinaryProvider.deleteFile(card.cover.publicId)
+      }
+
+      if (card.attachments?.length) {
+        await Promise.all(
+          card.attachments
+            .filter(att => att.type === 'file' && att.publicId)
+            .map(att => CloudinaryProvider.deleteFile(att.publicId))
+        )
+      }
+    }
+
     await cardModel.deleteManyByColumnId(columnId)
+    await columnModel.deleteOneById(columnId)
     await boardModel.pullColumnOrderIds(targetColumn)
+
     return { deleteResult: 'Column and its Cards deleted.' }
   } catch (error) { throw error }
 }

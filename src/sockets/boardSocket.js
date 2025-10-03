@@ -34,4 +34,12 @@ export const boardSocket = (socket) => {
   socket.on('FE_ADD_CARD_IN_BOARD', ({ boardId, board }) => {
     socket.to(boardId).emit('BE_ADD_CARD_IN_BOARD', board)
   })
+
+  socket.on('FE_DELETE_CARD_IN_BOARD', ({ boardId, board }) => {
+    socket.to(boardId).emit('BE_DELETE_CARD_IN_BOARD', board)
+  })
+
+  socket.on('FE_UPDATE_CARD_IN_BOARD', ({ boardId, board }) => {
+    socket.to(boardId).emit('BE_UPDATE_CARD_IN_BOARD', board)
+  })
 }

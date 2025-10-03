@@ -4,6 +4,8 @@ import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
 import { CARD_ATTACHMENT_ACTIONS } from '~/utils/constants'
 import { v4 as uuidv4 } from 'uuid'
 import { normalizeFileName } from '~/utils/formatters'
+import ApiError from '~/utils/ApiError'
+import { StatusCodes } from 'http-status-codes'
 
 const createNew = async (reqBody) => {
   try {
@@ -29,8 +31,13 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
       updatedAt: Date.now()
     }
 
+    const currentCard = await cardModel.findOneById(cardId)
+
+    if (!currentCard) {
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Card not found.')
+    }
+
     if (cardCoverFile) {
-      const currentCard = await cardModel.findOneById(cardId)
       if (currentCard.cover?.attachment && currentCard.cover?.publicId) {
         await CloudinaryProvider.deleteFile(currentCard.cover.publicId)
       }
@@ -46,7 +53,6 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
     }
 
     if (updateData.coverToDelete) {
-      const currentCard = await cardModel.findOneById(cardId)
       if (currentCard.cover?.attachment === updateData.coverToDelete.attachment && currentCard.cover?.publicId === updateData.coverToDelete.publicId) {
         await CloudinaryProvider.deleteFile(currentCard.cover.publicId)
         currentCard.cover = { attachment: null, publicId: null }
@@ -95,8 +101,6 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
     }
 
     if (updateData.action && updateData.newAttachment) {
-      const currentCard = await cardModel.findOneById(cardId)
-
       if (updateData.action === CARD_ATTACHMENT_ACTIONS.EDIT) {
         currentCard.attachments.find(a => {
           if (a.attachmentId === updateData.newAttachment.attachmentId) {
@@ -145,7 +149,34 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
   } catch (error) { throw error }
 }
 
+const deleteItem = async (cardId) => {
+  try {
+    const targetCard = await cardModel.findOneById(cardId)
+
+    if (!targetCard) {
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Card not found.')
+    }
+
+    if (targetCard.cover?.publicId) {
+      await CloudinaryProvider.deleteFile(targetCard.cover.publicId)
+    }
+
+    if (targetCard.attachments?.length) {
+      await Promise.all(
+        targetCard.attachments
+          .filter(att => att.type === 'file' && att.publicId)
+          .map(att => CloudinaryProvider.deleteFile(att.publicId))
+      )
+    }
+
+    await cardModel.deleteOneById(cardId)
+    await columnModel.pullCardOrderIds(targetCard)
+    return { deleteResult: 'Card deleted.' }
+  } catch (error) { throw error }
+}
+
 export const cardService = {
   createNew,
-  update
+  update,
+  deleteItem
 }

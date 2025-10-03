@@ -12,7 +12,7 @@ import socketIo from 'socket.io'
 import http from 'http'
 import { boardSocket } from './sockets/boardSocket'
 import { inviteSocket } from './sockets/inviteSocket'
-import { cardSocket } from './sockets/cardSocket'
+import { activeCardSocket } from './sockets/activeCardSocket'
 
 const START_SERVER = () => {
   const app = express()
@@ -39,7 +39,7 @@ const START_SERVER = () => {
   io.on('connection', (socket) => {
     inviteSocket(socket)
     boardSocket(socket)
-    cardSocket(socket)
+    activeCardSocket(socket)
   })
 
   server.listen(env.LOCAL_DEV_APP_PORT, env.LOCAL_DEV_APP_HOST, () => {

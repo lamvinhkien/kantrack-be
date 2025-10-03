@@ -34,9 +34,9 @@ const deleteFile = async (publicId) => {
 
   for (const type of resourceTypes) {
     try {
-      const result = await cloudinary.uploader.destroy(publicId, { resource_type: type })
-      if (result.result === 'ok' || result.result === 'not_found') {
-        return result
+      const res = await cloudinary.uploader.destroy(publicId, { resource_type: type })
+      if (res.result === 'ok' || res.result === 'not_found') {
+        return res
       }
     } catch (err) { throw err }
   }

@@ -60,6 +60,12 @@ const findOneById = async (id) => {
   } catch (error) { throw new Error(error) }
 }
 
+const findAllByColumnId = async (columnId) => {
+  try {
+    return await GET_DB().collection(CARD_COLLECTION_NAME).find({ columnId: new ObjectId(columnId) }).toArray()
+  } catch (error) { throw new Error(error) }
+}
+
 const update = async (cardId, updateData) => {
   try {
     Object.keys(updateData).forEach(fieldName => {
@@ -128,14 +134,22 @@ const unshiftNewAttachments = async (cardId, attachmentsData) => {
   } catch (error) { throw new Error(error) }
 }
 
+const deleteOneById = async (id) => {
+  try {
+    return await GET_DB().collection(CARD_COLLECTION_NAME).deleteOne({ _id: new ObjectId(id) })
+  } catch (error) { throw new Error(error) }
+}
+
 export const cardModel = {
   CARD_COLLECTION_NAME,
   CARD_COLLECTION_SCHEMA,
   createNew,
   findOneById,
+  findAllByColumnId,
   update,
   deleteManyByColumnId,
   unshiftNewComment,
   updateMembers,
-  unshiftNewAttachments
+  unshiftNewAttachments,
+  deleteOneById
 }
