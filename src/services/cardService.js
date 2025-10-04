@@ -49,13 +49,23 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
         `${uuidv4()}-${cardCoverFile.originalname}`
       )
 
-      return await cardModel.update(cardId, { cover: { attachment: uploadResult.secure_url, publicId: uploadResult.public_id } })
+      return await cardModel.update(
+        cardId,
+        {
+          cover: {
+            attachment: uploadResult.secure_url,
+            publicId: uploadResult.public_id,
+            uploadedAt: Date.now(),
+            size: cardCoverFile.size
+          }
+        }
+      )
     }
 
     if (updateData.coverToDelete) {
       if (currentCard.cover?.attachment === updateData.coverToDelete.attachment && currentCard.cover?.publicId === updateData.coverToDelete.publicId) {
         await CloudinaryProvider.deleteFile(currentCard.cover.publicId)
-        currentCard.cover = { attachment: null, publicId: null }
+        currentCard.cover = { attachment: null, publicId: null, uploadedAt: null, size: null }
       }
       return await cardModel.update(cardId, currentCard)
     }
