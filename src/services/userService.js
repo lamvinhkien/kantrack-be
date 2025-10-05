@@ -142,7 +142,7 @@ const update = async (userId, reqBody, userAvatarFile, deviceId) => {
     }
 
     if (userAvatarFile) {
-      if (existUser.avatar?.attachment && existUser.avatar?.publicId) {
+      if (existUser.avatar?.url && existUser.avatar?.publicId) {
         await CloudinaryProvider.deleteFile(existUser.avatar.publicId)
       }
 
@@ -153,7 +153,7 @@ const update = async (userId, reqBody, userAvatarFile, deviceId) => {
         `${uuidv4()}-${userAvatarFile.originalname}`
       )
 
-      updatedUser = await userModel.update(userId, { avatar: { attachment: uploadResult.secure_url, publicId: uploadResult.public_id } })
+      updatedUser = await userModel.update(userId, { avatar: { url: uploadResult.secure_url, publicId: uploadResult.public_id } })
     }
 
     updatedUser = await userModel.update(userId, reqBody)

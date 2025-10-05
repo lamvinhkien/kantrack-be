@@ -10,21 +10,22 @@ const CARD_COLLECTION_SCHEMA = Joi.object({
   columnId: Joi.string().required().pattern(OBJECT_ID_RULE).message(OBJECT_ID_RULE_MESSAGE),
   title: Joi.string().required().min(3).max(50).trim().strict(),
   description: Joi.string().optional(),
+  cover: Joi.object({
+    url: Joi.string().required().default(null),
+    publicId: Joi.string().required().default(null),
+    displayText: Joi.string(),
+    uploadedAt: Joi.date().timestamp().default(null),
+    size: Joi.number().required().default(null)
+  }).default(null),
   attachments: Joi.array().items({
     attachmentId: Joi.string().required(),
-    attachment: Joi.string().required(),
+    url: Joi.string().required(),
     publicId: Joi.string().required().default(null),
     displayText: Joi.string(),
     type: Joi.string().required(),
     uploadedAt: Joi.date().timestamp().default(null),
     size: Joi.number().required().default(null)
   }).default([]),
-  cover: Joi.object({
-    attachment: Joi.string().required().default(null),
-    publicId: Joi.string().required().default(null),
-    uploadedAt: Joi.date().timestamp().default(null),
-    size: Joi.number().required().default(null)
-  }).default(null),
   memberIds: Joi.array().items(Joi.string().pattern(OBJECT_ID_RULE).message(OBJECT_ID_RULE_MESSAGE)).default([]),
   comments: Joi.array().items({
     userId: Joi.string().pattern(OBJECT_ID_RULE).message(OBJECT_ID_RULE_MESSAGE),

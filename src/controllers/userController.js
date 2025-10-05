@@ -20,15 +20,19 @@ const verifyAccount = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   try {
-    const deviceId = req.cookies.deviceId ? req.cookies.deviceId : uuidv4()
+    const deviceId = req.cookies.deviceId || uuidv4()
     const result = await userService.login(req.body, deviceId)
+
+    if (result.require2fa) {
+      res.cookie('deviceId', deviceId, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('365 days') })
+    }
 
     if (result.accessToken && result.refreshToken) {
       res.cookie('accessToken', result.accessToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('7 days') })
       res.cookie('refreshToken', result.refreshToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('14 days') })
+      res.cookie('deviceId', deviceId, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('365 days') })
     }
 
-    res.cookie('deviceId', deviceId, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('365 days') })
     res.status(StatusCodes.OK).json(result)
   } catch (error) { next(error) }
 }
@@ -63,7 +67,7 @@ const update = async (req, res, next) => {
   try {
     const userId = req.jwtDecoded._id
     const userAvatarFile = req.file
-    const deviceId = req.cookies.deviceId ? req.cookies.deviceId : null
+    const deviceId = req.cookies.deviceId || null
     const updatedUser = await userService.update(userId, req.body, userAvatarFile, deviceId)
     res.status(StatusCodes.OK).json(updatedUser)
   } catch (error) { next(error) }
@@ -82,7 +86,7 @@ const setup2FA = async (req, res, next) => {
     const userId = req.jwtDecoded._id
     const otpToken = req.body.otpToken
     const action = req.body.action2FA
-    const deviceId = req.cookies.deviceId ? req.cookies.deviceId : null
+    const deviceId = req.cookies.deviceId || null
     const result = await userService.setup2FA(userId, otpToken, action, deviceId)
     res.status(StatusCodes.OK).json(result)
   } catch (error) { next(error) }
@@ -91,7 +95,7 @@ const setup2FA = async (req, res, next) => {
 const verify2FA = async (req, res, next) => {
   try {
     const { email, otpToken } = req.body
-    const deviceId = req.cookies.deviceId ? req.cookies.deviceId : null
+    const deviceId = req.cookies.deviceId || null
     const result = await userService.verify2FA(email, otpToken, deviceId)
 
     if (result.accessToken && result.refreshToken) {

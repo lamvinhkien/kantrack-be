@@ -38,7 +38,7 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
     }
 
     if (cardCoverFile) {
-      if (currentCard.cover?.attachment && currentCard.cover?.publicId) {
+      if (currentCard.cover?.url && currentCard.cover?.publicId) {
         await CloudinaryProvider.deleteFile(currentCard.cover.publicId)
       }
 
@@ -53,8 +53,9 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
         cardId,
         {
           cover: {
-            attachment: uploadResult.secure_url,
+            url: uploadResult.secure_url,
             publicId: uploadResult.public_id,
+            displayText: normalizeFileName(cardCoverFile.originalname),
             uploadedAt: Date.now(),
             size: cardCoverFile.size
           }
@@ -63,9 +64,9 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
     }
 
     if (updateData.coverToDelete) {
-      if (currentCard.cover?.attachment === updateData.coverToDelete.attachment && currentCard.cover?.publicId === updateData.coverToDelete.publicId) {
+      if (currentCard.cover?.url === updateData.coverToDelete.url && currentCard.cover?.publicId === updateData.coverToDelete.publicId) {
         await CloudinaryProvider.deleteFile(currentCard.cover.publicId)
-        currentCard.cover = { attachment: null, publicId: null, uploadedAt: null, size: null }
+        currentCard.cover = { url: null, publicId: null, displayText: null, uploadedAt: null, size: null }
       }
       return await cardModel.update(cardId, currentCard)
     }
@@ -73,7 +74,7 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
     if (updateData.link) {
       const newLink = {
         attachmentId: uuidv4(),
-        attachment: updateData.link,
+        url: updateData.link,
         publicId: null,
         type: 'link',
         displayText: updateData?.displayText,
@@ -95,11 +96,11 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
         })
       )
 
-      const newAttach = uploadResults.map((r, idx) => {
+      const newAttach = uploadResults.map((result, idx) => {
         return {
           attachmentId: uuidv4(),
-          attachment: r.secure_url,
-          publicId: r.public_id,
+          url: result.secure_url,
+          publicId: result.public_id,
           type: 'file',
           displayText: normalizeFileName(cardAttachmentFiles[idx].originalname),
           size: cardAttachmentFiles[idx].size,
@@ -115,7 +116,7 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
         currentCard.attachments.find(a => {
           if (a.attachmentId === updateData.newAttachment.attachmentId) {
             if (updateData.newAttachment.newLink) {
-              a.attachment = updateData.newAttachment.newLink
+              a.url = updateData.newAttachment.newLink
             }
 
             a.displayText = updateData.newAttachment.displayText
