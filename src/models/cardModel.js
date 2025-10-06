@@ -1,5 +1,5 @@
 import Joi from 'joi'
-import { OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE, EMAIL_RULE, EMAIL_RULE_MESSAGE } from '~/utils/validators'
+import { OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE, EMAIL_RULE, EMAIL_RULE_MESSAGE, DUE_TIME_RULE } from '~/utils/validators'
 import { GET_DB } from '~/config/mongodb'
 import { ObjectId } from 'mongodb'
 import { CARD_MEMBER_ACTIONS } from '~/utils/constants'
@@ -35,6 +35,36 @@ const CARD_COLLECTION_SCHEMA = Joi.object({
     content: Joi.string(),
     commentedAt: Joi.date().timestamp()
   }).default([]),
+  dates: Joi.object({
+    startDate: Joi.date().timestamp('javascript').allow(null).default(null),
+    dueDate: Joi.date().timestamp('javascript').allow(null).default(null),
+    dueTime: Joi.string().pattern(DUE_TIME_RULE).allow(null).default(null),
+    reminder: Joi.object({
+      enabled: Joi.boolean().default(false),
+      timeBefore: Joi.number().integer().min(0).default(0),
+      type: Joi.string().valid('notification', 'email').default('email'),
+      scheduledAt: Joi.date().timestamp('javascript').allow(null).default(null),
+      sent: Joi.boolean().default(false)
+    }).default({
+      enabled: false,
+      timeBefore: 0,
+      type: 'email',
+      scheduledAt: null,
+      sent: false
+    })
+  }).default({
+    startDate: null,
+    dueDate: null,
+    dueTime: null,
+    reminder: {
+      enabled: false,
+      timeBefore: 0,
+      type: 'email',
+      scheduledAt: null,
+      sent: false
+    }
+  }),
+  complete: Joi.boolean().default(false),
   createdAt: Joi.date().timestamp('javascript').default(Date.now),
   updatedAt: Joi.date().timestamp('javascript').default(null),
   _destroy: Joi.boolean().default(false)
