@@ -1,5 +1,5 @@
 import Joi from 'joi'
-import { OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE, EMAIL_RULE, EMAIL_RULE_MESSAGE, DUE_TIME_RULE } from '~/utils/validators'
+import { OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE, DUE_TIME_RULE } from '~/utils/validators'
 import { GET_DB } from '~/config/mongodb'
 import { ObjectId } from 'mongodb'
 import { CARD_MEMBER_ACTIONS } from '~/utils/constants'
@@ -8,7 +8,7 @@ const CARD_COLLECTION_NAME = 'cards'
 const CARD_COLLECTION_SCHEMA = Joi.object({
   boardId: Joi.string().required().pattern(OBJECT_ID_RULE).message(OBJECT_ID_RULE_MESSAGE),
   columnId: Joi.string().required().pattern(OBJECT_ID_RULE).message(OBJECT_ID_RULE_MESSAGE),
-  title: Joi.string().required().min(3).max(50).trim().strict(),
+  title: Joi.string().required().min(3).max(40).trim().strict(),
   description: Joi.string().optional(),
   cover: Joi.object({
     url: Joi.string().required().default(null),
@@ -29,9 +29,6 @@ const CARD_COLLECTION_SCHEMA = Joi.object({
   memberIds: Joi.array().items(Joi.string().pattern(OBJECT_ID_RULE).message(OBJECT_ID_RULE_MESSAGE)).default([]),
   comments: Joi.array().items({
     userId: Joi.string().pattern(OBJECT_ID_RULE).message(OBJECT_ID_RULE_MESSAGE),
-    userEmail: Joi.string().pattern(EMAIL_RULE).message(EMAIL_RULE_MESSAGE),
-    userAvatar: Joi.string(),
-    userDisplayName: Joi.string(),
     content: Joi.string(),
     commentedAt: Joi.date().timestamp()
   }).default([]),

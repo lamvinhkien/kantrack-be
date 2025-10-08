@@ -154,7 +154,7 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
       const commentData = {
         ...updateData.commentToAdd,
         userId: userInfo._id,
-        userEmail: userInfo.email,
+        content: updateData.commentToAdd.content.trim(),
         commentedAt: Date.now()
       }
       return await cardModel.unshiftNewComment(cardId, commentData)
