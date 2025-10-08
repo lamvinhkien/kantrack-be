@@ -28,9 +28,10 @@ const CARD_COLLECTION_SCHEMA = Joi.object({
   }).default([]),
   memberIds: Joi.array().items(Joi.string().pattern(OBJECT_ID_RULE).message(OBJECT_ID_RULE_MESSAGE)).default([]),
   comments: Joi.array().items({
-    userId: Joi.string().pattern(OBJECT_ID_RULE).message(OBJECT_ID_RULE_MESSAGE),
-    content: Joi.string(),
-    commentedAt: Joi.date().timestamp()
+    commentId: Joi.string().required(),
+    userId: Joi.string().required().pattern(OBJECT_ID_RULE).message(OBJECT_ID_RULE_MESSAGE),
+    content: Joi.string().required().min(1).trim().strict(),
+    commentedAt: Joi.date().timestamp('javascript').allow(null).default(null)
   }).default([]),
   dates: Joi.object({
     startDate: Joi.date().timestamp('javascript').allow(null).default(null),

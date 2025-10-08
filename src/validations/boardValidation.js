@@ -6,22 +6,54 @@ import { OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE } from '~/utils/validators'
 
 const createNew = async (req, res, next) => {
   const correctCondition = Joi.object({
-    title: Joi.string().required().min(3).max(35).trim().strict(),
-    type: Joi.string().valid(BOARD_TYPES.PUBLIC, BOARD_TYPES.PRIVATE).required()
+    title: Joi.string()
+      .min(3)
+      .max(35)
+      .trim()
+      .strict()
+      .messages({
+        'string.base': 'Title must be a text value.',
+        'string.empty': 'Title cannot be empty.',
+        'string.min': 'Title must be at least {#limit} characters long.',
+        'string.max': 'Title must not exceed {#limit} characters.'
+      }),
+    type: Joi.string()
+      .valid(BOARD_TYPES.PUBLIC, BOARD_TYPES.PRIVATE)
+      .required()
+      .messages({
+        'any.required': 'Board type is required.',
+        'string.base': 'Board type must be a text value.',
+        'any.only': `Board type must be either "${BOARD_TYPES.PUBLIC}" or "${BOARD_TYPES.PRIVATE}".`
+      })
   })
 
   try {
     await correctCondition.validateAsync(req.body, { abortEarly: false })
     next()
   } catch (error) {
-    next(new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(error).message))
+    next(error)
   }
 }
 
 const update = async (req, res, next) => {
   const correctCondition = Joi.object({
-    title: Joi.string().min(3).max(35).trim().strict(),
-    type: Joi.string().valid(BOARD_TYPES.PUBLIC, BOARD_TYPES.PRIVATE),
+    title: Joi.string()
+      .min(3)
+      .max(35)
+      .trim()
+      .strict()
+      .messages({
+        'string.base': 'Title must be a text value.',
+        'string.empty': 'Title cannot be empty.',
+        'string.min': 'Title must be at least {#limit} characters long.',
+        'string.max': 'Title must not exceed {#limit} characters.'
+      }),
+    type: Joi.string()
+      .valid(BOARD_TYPES.PUBLIC, BOARD_TYPES.PRIVATE)
+      .messages({
+        'string.base': 'Board type must be a text value.',
+        'any.only': `Board type must be either "${BOARD_TYPES.PUBLIC}" or "${BOARD_TYPES.PRIVATE}".`
+      }),
     columnOrderIds: Joi.array().items(Joi.string().pattern(OBJECT_ID_RULE).message(OBJECT_ID_RULE_MESSAGE)).default([])
   })
 
@@ -32,7 +64,7 @@ const update = async (req, res, next) => {
     })
     next()
   } catch (error) {
-    next(new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(error).message))
+    next(error)
   }
 }
 

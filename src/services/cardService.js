@@ -1,7 +1,7 @@
 import { cardModel } from '~/models/cardModel'
 import { columnModel } from '~/models/columnModel'
 import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
-import { CARD_ATTACHMENT_ACTIONS } from '~/utils/constants'
+import { CARD_ATTACHMENT_ACTIONS, CARD_COMMENT_ACTIONS } from '~/utils/constants'
 import { v4 as uuidv4 } from 'uuid'
 import { normalizeFileName } from '~/utils/formatters'
 import ApiError from '~/utils/ApiError'
@@ -150,14 +150,55 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
       }
     }
 
-    if (updateData.commentToAdd) {
-      const commentData = {
-        ...updateData.commentToAdd,
-        userId: userInfo._id,
-        content: updateData.commentToAdd.content.trim(),
-        commentedAt: Date.now()
+    if (updateData.action && updateData.comment) {
+      const action = updateData.action
+      const commentPayload = updateData.comment
+
+      if (action === CARD_COMMENT_ACTIONS.ADD) {
+        const commentData = {
+          ...updateData.comment,
+          commentId: uuidv4(),
+          userId: userInfo._id,
+          content: updateData.comment.content.trim(),
+          commentedAt: Date.now()
+        }
+        return await cardModel.unshiftNewComment(cardId, commentData)
       }
-      return await cardModel.unshiftNewComment(cardId, commentData)
+
+      if (action === CARD_COMMENT_ACTIONS.EDIT) {
+        const comments = Array.isArray(currentCard.comments) ? currentCard.comments : []
+        const target = comments.find(c => c.commentId === commentPayload.commentId)
+
+        if (target) {
+          if (target.userId.toString() !== userInfo._id.toString()) {
+            throw new ApiError(StatusCodes.FORBIDDEN, 'Not allowed.')
+          }
+
+          if (commentPayload.content && commentPayload.content.trim()) {
+            target.content = commentPayload.content.trim()
+            target.commentedAt = Date.now()
+          }
+        }
+
+        return await cardModel.update(cardId, currentCard)
+      }
+
+      if (action === CARD_COMMENT_ACTIONS.REMOVE) {
+        const comments = Array.isArray(currentCard.comments) ? currentCard.comments : []
+        const target = comments.find(c => c.commentId === commentPayload.commentId)
+
+        if (!target) {
+          throw new ApiError(StatusCodes.NOT_FOUND, 'Comment not found.')
+        }
+
+        if (target.userId.toString() !== userInfo._id.toString()) {
+          throw new ApiError(StatusCodes.FORBIDDEN, 'Not allowed.')
+        }
+
+        currentCard.comments = comments.filter(c => c.commentId !== commentPayload.commentId)
+
+        return await cardModel.update(cardId, currentCard)
+      }
     }
 
     if (updateData.incomingMemberInfo) {

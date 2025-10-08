@@ -53,7 +53,6 @@ const update = async (req, res, next) => {
   })
 
   try {
-    // Lưu ý đối với trường hợp update, cho phép Unknown để không cần đầy một số field lên
     await correctCondition.validateAsync(req.body, { abortEarly: false, allowUnknown: true })
     next()
   } catch (error) {
