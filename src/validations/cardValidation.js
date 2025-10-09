@@ -49,11 +49,11 @@ const update = async (req, res, next) => {
         .trim()
         .strict()
         .messages({
-          'any.required': 'Comment content is required.',
-          'string.empty': 'Comment content cannot be empty.',
-          'string.min': 'Comment content must be at least {#limit} character long.',
-          'string.max': 'Comment content must not exceed {#limit} characters.',
-          'string.base': 'Comment content must be a text value.'
+          'any.required': 'Comment is required.',
+          'string.empty': 'Comment cannot be empty.',
+          'string.min': 'Comment must be at least {#limit} character long.',
+          'string.max': 'Comment must not exceed {#limit} characters.',
+          'string.base': 'Comment must be a text value.'
         })
     })
   })
