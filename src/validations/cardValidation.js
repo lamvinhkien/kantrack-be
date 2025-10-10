@@ -45,7 +45,7 @@ const update = async (req, res, next) => {
       content: Joi.string()
         .required()
         .min(1)
-        .max(200)
+        .max(500)
         .trim()
         .strict()
         .messages({

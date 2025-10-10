@@ -30,7 +30,7 @@ const CARD_COLLECTION_SCHEMA = Joi.object({
   comments: Joi.array().items({
     commentId: Joi.string().required(),
     userId: Joi.string().required().pattern(OBJECT_ID_RULE).message(OBJECT_ID_RULE_MESSAGE),
-    content: Joi.string().required().min(1).trim().strict(),
+    content: Joi.string().required().min(1).max(500).trim().strict(),
     commentedAt: Joi.date().timestamp('javascript').allow(null).default(null)
   }).default([]),
   dates: Joi.object({
