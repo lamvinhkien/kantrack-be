@@ -1,7 +1,7 @@
 import { env } from '~/config/environment'
 import { MongoClient, ServerApiVersion } from 'mongodb'
 
-let trelloDatabaseInstance = null
+let kantrackDatabaseInstance = null
 
 const mongoClientInstance = new MongoClient(env.MONGODB_URI, {
   serverApi: {
@@ -13,7 +13,7 @@ const mongoClientInstance = new MongoClient(env.MONGODB_URI, {
 
 export const CONNECT_DB = async () => {
   await mongoClientInstance.connect()
-  trelloDatabaseInstance = mongoClientInstance.db(env.DATABASE_NAME)
+  kantrackDatabaseInstance = mongoClientInstance.db(env.DATABASE_NAME)
 }
 
 export const CLOSE_DB = async () => {
@@ -21,6 +21,6 @@ export const CLOSE_DB = async () => {
 }
 
 export const GET_DB = () => {
-  if (!trelloDatabaseInstance) throw new Error('Must connect to database first.')
-  return trelloDatabaseInstance
+  if (!kantrackDatabaseInstance) throw new Error('Must connect to database first.')
+  return kantrackDatabaseInstance
 }

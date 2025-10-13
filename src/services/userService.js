@@ -33,22 +33,23 @@ const createNew = async (reqBody) => {
     const getNewUser = await userModel.findOneById(createdUser.insertedId)
 
     const verificationLink = `${WEBSITE_DOMAIN}/account/verification?email=${getNewUser.email}&token=${getNewUser.verifyToken}`
+    console.log('🚀 ~ verificationLink: ', verificationLink)
 
-    const to = getNewUser.email
-    const toName = getNewUser.username
-    const subject = 'Account created.'
-    const templateId = MAILER_SEND_TEMPLATES_IDS.REGISTER_ACCOUNT
-    const personalizetionData = [
-      {
-        email: to,
-        data: {
-          support_email: env.MAILER_SEND_SUPPORT_EMAIL,
-          verification_link: verificationLink
-        }
-      }
-    ]
+    // const to = getNewUser.email
+    // const toName = getNewUser.username
+    // const subject = 'Account created.'
+    // const templateId = MAILER_SEND_TEMPLATES_IDS.REGISTER_ACCOUNT
+    // const personalizetionData = [
+    //   {
+    //     email: to,
+    //     data: {
+    //       support_email: env.MAILER_SEND_SUPPORT_EMAIL,
+    //       verification_link: verificationLink
+    //     }
+    //   }
+    // ]
 
-    await MailerSendProvider.sendEmail({ to, toName, subject, templateId, personalizetionData })
+    // await MailerSendProvider.sendEmail({ to, toName, subject, templateId, personalizetionData })
 
     return pickUser(getNewUser)
   } catch (error) { throw error }
@@ -181,7 +182,7 @@ const get2FA_QRCode = async (userId) => {
 
     const otpAuthToken = authenticator.keyuri(
       existUser.email,
-      'TRELLO',
+      'KanTrack',
       secretKey
     )
 
@@ -204,7 +205,7 @@ const setup2FA = async (userId, otpToken, action2FA, deviceId) => {
       token: otpToken,
       secret: existUser.secretKey2fa
     })
-    if (!isValid) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Invalid OTP token.')
+    if (!isValid) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Invalid code.')
 
     let updatedUser = {}
     if (action2FA === SETUP_2FA_ACTIONS.ENABLE) updatedUser = await userModel.update(existUser._id, { require2fa: true })
@@ -229,7 +230,7 @@ const verify2FA = async (email, otpToken, deviceId) => {
       token: otpToken,
       secret: existUser.secretKey2fa
     })
-    if (!isValid) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Invalid OTP token.')
+    if (!isValid) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Invalid code.')
 
     const updatedUserSession = await userSessionModel.update(existUser._id, deviceId)
     const userInfo = { _id: existUser._id, email: existUser.email }
