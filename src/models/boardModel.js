@@ -15,6 +15,49 @@ const BOARD_COLLECTION_SCHEMA = Joi.object({
   columnOrderIds: Joi.array().items(Joi.string().pattern(OBJECT_ID_RULE).message(OBJECT_ID_RULE_MESSAGE)).default([]),
   ownerIds: Joi.array().items(Joi.string().pattern(OBJECT_ID_RULE).message(OBJECT_ID_RULE_MESSAGE)).default([]),
   memberIds: Joi.array().items(Joi.string().pattern(OBJECT_ID_RULE).message(OBJECT_ID_RULE_MESSAGE)).default([]),
+  memberPermissions: Joi.object({
+    editBoardTitle: Joi.boolean().default(false),
+    editBoardType: Joi.boolean().default(false),
+    deleteMemberInBoard: Joi.boolean().default(false),
+    inviteMemberToBoard: Joi.boolean().default(true),
+
+    addColumn: Joi.boolean().default(true),
+    editColumnTitle: Joi.boolean().default(true),
+    deleteColumn: Joi.boolean().default(true),
+    moveColumn: Joi.boolean().default(true),
+
+    addCard: Joi.boolean().default(true),
+    editCardTitle: Joi.boolean().default(true),
+    editCardDescription: Joi.boolean().default(true),
+    editCardCover: Joi.boolean().default(true),
+    editCardMember: Joi.boolean().default(true),
+    editCardDate: Joi.boolean().default(true),
+    editCardAttachment: Joi.boolean().default(true),
+    editCardComment: Joi.boolean().default(true),
+    editCardMarkComplete: Joi.boolean().default(true),
+    deleteCard: Joi.boolean().default(true),
+    moveCard: Joi.boolean().default(true)
+  }).default({
+    editBoardTitle: false,
+    editBoardType: false,
+    deleteMemberInBoard: false,
+    inviteMemberToBoard: true,
+    addColumn: true,
+    editColumnTitle: true,
+    deleteColumn: true,
+    moveColumn: true,
+    addCard: true,
+    editCardTitle: true,
+    editCardDescription: true,
+    editCardCover: true,
+    editCardMember: true,
+    editCardDate: true,
+    editCardAttachment: true,
+    editCardComment: true,
+    editCardMarkComplete: true,
+    deleteCard: true,
+    moveCard: true
+  }),
   createdAt: Joi.date().timestamp('javascript').default(Date.now),
   updatedAt: Joi.date().timestamp('javascript').default(null),
   _destroy: Joi.boolean().default(false)
@@ -44,20 +87,14 @@ const findOneById = async (id) => {
   } catch (error) { throw new Error(error) }
 }
 
-const getDetails = async (userId, boardId) => {
+const getDetails = async (boardId) => {
   try {
     const result = await GET_DB().collection(BOARD_COLLECTION_NAME).aggregate([
       {
         $match: {
           $and: [
             { _id: new ObjectId(boardId) },
-            { _destroy: false },
-            {
-              $or: [
-                { ownerIds: { $all: [new ObjectId(userId)] } },
-                { memberIds: { $all: [new ObjectId(userId)] } }
-              ]
-            }
+            { _destroy: false }
           ]
         }
       },
@@ -191,6 +228,17 @@ const pushMemberIds = async (boardId, userId) => {
   } catch (error) { throw new Error(error) }
 }
 
+const pullMemberIds = async (boardId, userId) => {
+  try {
+    return await GET_DB().collection(BOARD_COLLECTION_NAME).findOneAndUpdate(
+      { _id: new ObjectId(boardId) },
+      { $pull: { memberIds: new ObjectId(userId) } },
+      { returnDocument: 'after' }
+    )
+  } catch (error) { throw new Error(error) }
+}
+
+
 export const boardModel = {
   BOARD_COLLECTION_NAME,
   BOARD_COLLECTION_SCHEMA,
@@ -201,5 +249,6 @@ export const boardModel = {
   update,
   pullColumnOrderIds,
   getBoards,
-  pushMemberIds
+  pushMemberIds,
+  pullMemberIds
 }

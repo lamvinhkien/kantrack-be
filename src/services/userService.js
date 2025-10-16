@@ -75,9 +75,9 @@ const verifyAccount = async (reqBody) => {
 const login = async (reqBody, deviceId) => {
   try {
     const existUser = await userModel.findOneByEmail(reqBody.email)
-    if (!existUser) throw new ApiError(StatusCodes.NOT_FOUND, 'Account not found.')
-    if (!existUser.isActive) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is not active, please verify email.')
+    if (!existUser) throw new ApiError(StatusCodes.NOT_FOUND, 'Your email or password is incorrect.')
     if (!bcryptjs.compareSync(reqBody.password, existUser.password)) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your email or password is incorrect.')
+    if (!existUser.isActive) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is not active, please verify email.')
 
     let currentSession = await userSessionModel.findOneByUserAndDeviceId(existUser._id, deviceId)
     if (!currentSession) {
