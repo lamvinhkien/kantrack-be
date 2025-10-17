@@ -85,7 +85,7 @@ const isAuthorized = () => async (req, res, next) => {
 
     if (req.method === 'GET') {
       if (board.type === 'public' || isOwner || isMember) return next()
-      throw new ApiError(StatusCodes.FORBIDDEN, 'Not allowed to view this board.')
+      throw new ApiError(StatusCodes.FORBIDDEN, 'Not allowed 0.')
     }
 
     if (isOwner) return next()
@@ -93,16 +93,16 @@ const isAuthorized = () => async (req, res, next) => {
     if (isMember) {
       const actionKey = actionMapFromRequest(req)
       if (!actionKey) {
-        throw new ApiError(StatusCodes.FORBIDDEN, 'Not allowed.')
+        throw new ApiError(StatusCodes.FORBIDDEN, 'Not allowed 1.')
       }
 
       const perms = board.memberPermissions || {}
       if (perms[actionKey]) return next()
 
-      throw new ApiError(StatusCodes.FORBIDDEN, 'Not allowed.')
+      throw new ApiError(StatusCodes.FORBIDDEN, 'Not allowed 2.')
     }
 
-    throw new ApiError(StatusCodes.FORBIDDEN, 'You are not authorized for this action.')
+    throw new ApiError(StatusCodes.FORBIDDEN, 'Not allowed 3.')
   } catch (error) {
     next(error)
   }

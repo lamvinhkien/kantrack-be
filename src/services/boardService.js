@@ -40,8 +40,19 @@ const update = async (boardId, reqBody) => {
       ...reqBody,
       updatedAt: Date.now()
     }
-    const updateBoard = await boardModel.update(boardId, updateData)
-    return updateBoard
+
+    let updatedBoard = {}
+
+    if (updateData.removeMember) updatedBoard = await boardModel.pullMemberIds(boardId, updateData.removeMember._id)
+
+    if (updateData.assignAdmin) {
+      updatedBoard = await boardModel.pullMemberIds(boardId, updateData.assignAdmin._id)
+      updatedBoard = await boardModel.pushOwnerIds(boardId, updateData.assignAdmin._id)
+    }
+
+    updatedBoard = await boardModel.update(boardId, updateData)
+
+    return updatedBoard
   } catch (error) { throw error }
 }
 
