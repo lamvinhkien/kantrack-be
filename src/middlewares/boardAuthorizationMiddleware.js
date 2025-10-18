@@ -3,6 +3,7 @@ import { columnModel } from '~/models/columnModel'
 import { cardModel } from '~/models/cardModel'
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError'
+import { BOARD_PUBLIC_ACTION, BOARD_OWNER_ACTIONS } from '~/utils/constants'
 
 const findBoardIdFromRequest = async (req) => {
   const { id } = req.params
@@ -73,36 +74,51 @@ const isAuthorized = () => async (req, res, next) => {
     const userId = req.jwtDecoded._id
     const boardId = await findBoardIdFromRequest(req)
 
-    if (!boardId)
-      throw new ApiError(StatusCodes.NOT_FOUND, 'Board not found.')
+    if (!boardId) throw new ApiError(StatusCodes.NOT_FOUND, 'Board not found.')
 
     const board = await boardModel.findOneById(boardId)
-    if (!board)
-      throw new ApiError(StatusCodes.NOT_FOUND, 'Board not found.')
+    if (!board) throw new ApiError(StatusCodes.NOT_FOUND, 'Board not found.')
 
-    const isOwner = board.ownerIds.map(id => id.toString()).includes(userId)
-    const isMember = board.memberIds.map(id => id.toString()).includes(userId)
+    const ownerIds = (board.ownerIds || []).map(id => id.toString())
+    const memberIds = (board.memberIds || []).map(id => id.toString())
 
+    const isOwner = ownerIds.includes(userId)
+    const isMember = memberIds.includes(userId)
+
+    // ===== Rule 1: Cho phép GET nếu public hoặc là member/owner =====
     if (req.method === 'GET') {
       if (board.type === 'public' || isOwner || isMember) return next()
-      throw new ApiError(StatusCodes.FORBIDDEN, 'Not allowed 0.')
+      throw new ApiError(StatusCodes.FORBIDDEN, 'You do not have permission to view this board.')
     }
 
+    // ===== Rule 2: PUBLIC actions (ví dụ leaveBoard) - ai cũng có thể làm =====
+    if (BOARD_PUBLIC_ACTION.some(key => req.body?.[key])) return next()
+
+    // ===== Rule 3: OWNER only actions (ví dụ updatePermissions) =====
+    if (BOARD_OWNER_ACTIONS.some(key => req.body?.[key])) {
+      if (!isOwner)
+        throw new ApiError(StatusCodes.FORBIDDEN, 'Only board owners can perform this action.')
+      return next()
+    }
+
+    // ===== Rule 4: Owner toàn quyền =====
     if (isOwner) return next()
 
+    // ===== Rule 5: Member có quyền theo permission =====
     if (isMember) {
       const actionKey = actionMapFromRequest(req)
-      if (!actionKey) {
-        throw new ApiError(StatusCodes.FORBIDDEN, 'Not allowed 1.')
-      }
+
+      // Nếu không có actionKey (tức là không nằm trong danh sách quản lý), cho phép
+      if (!actionKey) return next()
 
       const perms = board.memberPermissions || {}
       if (perms[actionKey]) return next()
 
-      throw new ApiError(StatusCodes.FORBIDDEN, 'Not allowed 2.')
+      throw new ApiError(StatusCodes.FORBIDDEN, 'You are not allowed to perform this action.')
     }
 
-    throw new ApiError(StatusCodes.FORBIDDEN, 'Not allowed 3.')
+    // ===== Rule 6: Người ngoài board =====
+    throw new ApiError(StatusCodes.FORBIDDEN, 'You are not a member of this board.')
   } catch (error) {
     next(error)
   }

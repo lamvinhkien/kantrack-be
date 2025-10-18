@@ -33,194 +33,153 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
     }
 
     const currentCard = await cardModel.findOneById(cardId)
-    if (!currentCard) {
-      throw new ApiError(StatusCodes.NOT_FOUND, 'Card not found.')
-    }
+    if (!currentCard) throw new ApiError(StatusCodes.NOT_FOUND, 'Card not found.')
 
+    // ------------------- COVER UPLOAD -------------------
     if (cardCoverFile) {
-      if (currentCard.cover?.url && currentCard.cover?.publicId) {
+      if (currentCard.cover?.publicId) {
         await CloudinaryProvider.deleteFile(currentCard.cover.publicId)
       }
 
-      const uploadResult = await CloudinaryProvider.streamUpload(
+      const upload = await CloudinaryProvider.streamUpload(
         cardCoverFile.buffer,
         'card-covers',
         'image',
         `${uuidv4()}-${cardCoverFile.originalname}`
       )
 
-      return await cardModel.update(
-        cardId,
-        {
-          cover: {
-            url: uploadResult.secure_url,
-            publicId: uploadResult.public_id,
-            displayText: normalizeFileName(cardCoverFile.originalname),
-            uploadedAt: Date.now(),
-            size: cardCoverFile.size
-          }
-        }
-      )
-    }
-
-    if (updateData.coverToDelete) {
-      if (
-        currentCard.cover?.url === updateData.coverToDelete.url &&
-        currentCard.cover?.publicId === updateData.coverToDelete.publicId
-      ) {
-        await CloudinaryProvider.deleteFile(currentCard.cover.publicId)
-        currentCard.cover = {
-          url: null,
-          publicId: null,
-          displayText: null,
-          uploadedAt: null,
-          size: null
-        }
+      const newCover = {
+        url: upload.secure_url,
+        publicId: upload.public_id,
+        displayText: normalizeFileName(cardCoverFile.originalname),
+        uploadedAt: Date.now(),
+        size: cardCoverFile.size
       }
-      return await cardModel.update(cardId, currentCard)
+
+      return await cardModel.update(cardId, { cover: newCover })
     }
 
+    // ------------------- COVER DELETE -------------------
+    if (updateData.coverToDelete) {
+      const { publicId, url } = updateData.coverToDelete
+      if (currentCard.cover?.url === url && currentCard.cover?.publicId === publicId) {
+        await CloudinaryProvider.deleteFile(publicId)
+      }
+      return await cardModel.update(cardId, {
+        cover: { url: null, publicId: null, displayText: null, uploadedAt: null, size: null }
+      })
+    }
+
+    // ------------------- ADD LINK ATTACHMENT -------------------
     if (updateData.link) {
       const newLink = {
         attachmentId: uuidv4(),
         url: updateData.link,
-        publicId: null,
         type: 'link',
-        displayText: updateData?.displayText || null,
-        size: null,
+        displayText: updateData.displayText || null,
         uploadedAt: Date.now()
       }
       return await cardModel.unshiftNewAttachments(cardId, [newLink])
     }
 
+    // ------------------- UPLOAD ATTACHMENTS -------------------
     if (Array.isArray(cardAttachmentFiles) && cardAttachmentFiles.length > 0) {
-      const uploadResults = await Promise.all(
-        cardAttachmentFiles.map((file) =>
-          CloudinaryProvider.streamUpload(
-            file.buffer,
-            'card-attachments',
-            'auto',
-            `${uuidv4()}-${file.originalname}`
-          )
+      const uploads = await Promise.all(
+        cardAttachmentFiles.map(file =>
+          CloudinaryProvider.streamUpload(file.buffer, 'card-attachments', 'auto', `${uuidv4()}-${file.originalname}`)
         )
       )
 
-      const newAttachments = uploadResults.map((result, idx) => ({
+      const newAttachments = uploads.map((res, i) => ({
         attachmentId: uuidv4(),
-        url: result.secure_url,
-        publicId: result.public_id,
+        url: res.secure_url,
+        publicId: res.public_id,
         type: 'file',
-        displayText: normalizeFileName(cardAttachmentFiles[idx].originalname),
-        size: cardAttachmentFiles[idx].size,
+        displayText: normalizeFileName(cardAttachmentFiles[i].originalname),
+        size: cardAttachmentFiles[i].size,
         uploadedAt: Date.now()
       }))
 
       return await cardModel.unshiftNewAttachments(cardId, newAttachments)
     }
 
+    // ------------------- ATTACHMENT EDIT / REMOVE -------------------
     if (updateData.action && updateData.newAttachment) {
-      const action = updateData.action
-      const attachmentPayload = updateData.newAttachment
+      const { action, newAttachment } = updateData
 
-      if (action === CARD_ATTACHMENT_ACTIONS.EDIT) {
-        const attachments = Array.isArray(currentCard.attachments) ? currentCard.attachments : []
-        const target = attachments.find(a => a.attachmentId === attachmentPayload.attachmentId)
-        if (target) {
-          if (attachmentPayload.newLink) {
-            target.url = attachmentPayload.newLink
-          }
-          if (typeof attachmentPayload.displayText !== 'undefined') {
-            target.displayText = attachmentPayload.displayText
-          }
-        }
-        return await cardModel.update(cardId, currentCard)
+      const attachments = Array.isArray(currentCard.attachments) ? currentCard.attachments : []
+      const target = attachments.find(a => a.attachmentId === newAttachment.attachmentId)
+
+      if (action === CARD_ATTACHMENT_ACTIONS.EDIT && target) {
+        if (newAttachment.newLink) target.url = newAttachment.newLink
+        if (typeof newAttachment.displayText !== 'undefined') target.displayText = newAttachment.displayText
+        return await cardModel.update(cardId, { attachments })
       }
 
-      if (action === CARD_ATTACHMENT_ACTIONS.REMOVE) {
-        const attachments = Array.isArray(currentCard.attachments) ? currentCard.attachments : []
-        const attachmentToDelete = attachments.find(a => a.attachmentId === attachmentPayload.attachmentId)
-
-        if (attachmentToDelete && attachmentToDelete.publicId) {
-          await CloudinaryProvider.deleteFile(attachmentToDelete.publicId)
-        }
-
-        currentCard.attachments = attachments.filter(a => a.attachmentId !== attachmentPayload.attachmentId)
-
-        return await cardModel.update(cardId, currentCard)
+      if (action === CARD_ATTACHMENT_ACTIONS.REMOVE && target) {
+        if (target.publicId) await CloudinaryProvider.deleteFile(target.publicId)
+        const updatedAttachments = attachments.filter(a => a.attachmentId !== newAttachment.attachmentId)
+        return await cardModel.update(cardId, { attachments: updatedAttachments })
       }
     }
 
+    // ------------------- COMMENT ADD / EDIT / REMOVE -------------------
     if (updateData.action && updateData.comment) {
-      const action = updateData.action
-      const commentPayload = updateData.comment
+      const { action, comment } = updateData
+      const comments = Array.isArray(currentCard.comments) ? currentCard.comments : []
 
       if (action === CARD_COMMENT_ACTIONS.ADD) {
-        const commentData = {
-          ...updateData.comment,
+        const newComment = {
           commentId: uuidv4(),
           userId: userInfo._id,
-          content: updateData.comment.content.trim(),
+          content: comment.content.trim(),
           commentedAt: Date.now()
         }
-        return await cardModel.unshiftNewComment(cardId, commentData)
+        return await cardModel.unshiftNewComment(cardId, newComment)
+      }
+
+      const target = comments.find(c => c.commentId === comment.commentId)
+      if (!target) throw new ApiError(StatusCodes.NOT_FOUND, 'Comment not found.')
+
+      if (target.userId.toString() !== userInfo._id.toString()) {
+        throw new ApiError(StatusCodes.FORBIDDEN, 'Not allowed.')
       }
 
       if (action === CARD_COMMENT_ACTIONS.EDIT) {
-        const comments = Array.isArray(currentCard.comments) ? currentCard.comments : []
-        const target = comments.find(c => c.commentId === commentPayload.commentId)
-
-        if (target) {
-          if (target.userId.toString() !== userInfo._id.toString()) {
-            throw new ApiError(StatusCodes.FORBIDDEN, 'Not allowed.')
-          }
-
-          if (commentPayload.content && commentPayload.content.trim()) {
-            target.content = commentPayload.content.trim()
-            target.commentedAt = Date.now()
-          }
+        if (comment.content?.trim()) {
+          target.content = comment.content.trim()
+          target.commentedAt = Date.now()
         }
-
-        return await cardModel.update(cardId, currentCard)
+        return await cardModel.update(cardId, { comments })
       }
 
       if (action === CARD_COMMENT_ACTIONS.REMOVE) {
-        const comments = Array.isArray(currentCard.comments) ? currentCard.comments : []
-        const target = comments.find(c => c.commentId === commentPayload.commentId)
-
-        if (!target) {
-          throw new ApiError(StatusCodes.NOT_FOUND, 'Comment not found.')
-        }
-
-        if (target.userId.toString() !== userInfo._id.toString()) {
-          throw new ApiError(StatusCodes.FORBIDDEN, 'Not allowed.')
-        }
-
-        currentCard.comments = comments.filter(c => c.commentId !== commentPayload.commentId)
-
-        return await cardModel.update(cardId, currentCard)
+        const updatedComments = comments.filter(c => c.commentId !== comment.commentId)
+        return await cardModel.update(cardId, { comments: updatedComments })
       }
     }
 
+    // ------------------- MEMBER UPDATE -------------------
     if (updateData.incomingMemberInfo) {
       return await cardModel.updateMembers(cardId, updateData.incomingMemberInfo)
     }
 
+    // ------------------- DATES UPDATE -------------------
     if (updateData.dates) {
       const { startDate, dueDate, dueTime, reminder } = updateData.dates
+      const parsedStart = startDate ? moment(startDate).toDate() : null
+      const parsedDue = dueDate ? moment(dueDate).toDate() : null
 
-      const parsedStartDate = startDate ? moment(startDate).toDate() : null
-      const parsedDueDate = dueDate ? moment(dueDate).toDate() : null
-
-      let scheduledAt = null
-      if (reminder?.enabled && parsedDueDate) {
-        scheduledAt = reminder?.scheduledAt
-          ? moment(reminder.scheduledAt).toDate()
-          : moment(parsedDueDate).subtract(reminder.timeBefore || 0, 'minutes').toDate()
-      }
+      const scheduledAt =
+        reminder?.enabled && parsedDue
+          ? reminder?.scheduledAt
+            ? moment(reminder.scheduledAt).toDate()
+            : moment(parsedDue).subtract(reminder.timeBefore || 0, 'minutes').toDate()
+          : null
 
       const newDates = {
-        startDate: parsedStartDate,
-        dueDate: parsedDueDate,
+        startDate: parsedStart,
+        dueDate: parsedDue,
         dueTime: dueTime || null,
         reminder: {
           enabled: !!reminder?.enabled,
@@ -234,14 +193,14 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
       return await cardModel.update(cardId, { dates: newDates })
     }
 
+    // ------------------- COMPLETE TOGGLE -------------------
     if (typeof updateData.complete !== 'undefined') {
       return await cardModel.update(cardId, { complete: updateData.complete })
     }
 
+    // ------------------- DEFAULT UPDATE -------------------
     return await cardModel.update(cardId, updateData)
-  } catch (error) {
-    throw error
-  }
+  } catch (error) { throw error }
 }
 
 const deleteItem = async (cardId) => {

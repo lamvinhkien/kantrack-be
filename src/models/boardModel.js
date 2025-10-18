@@ -248,6 +248,35 @@ const pushOwnerIds = async (boardId, userId) => {
   } catch (error) { throw new Error(error) }
 }
 
+const pullOwnerIds = async (boardId, userId) => {
+  try {
+    return await GET_DB().collection(BOARD_COLLECTION_NAME).findOneAndUpdate(
+      { _id: new ObjectId(boardId) },
+      { $pull: { ownerIds: new ObjectId(userId) } },
+      { returnDocument: 'after' }
+    )
+  } catch (error) { throw new Error(error) }
+}
+
+const updateMemberPermissions = async (boardId, updatePermissions) => {
+  try {
+    const setObject = {}
+    for (const [key, value] of Object.entries(updatePermissions)) {
+      setObject[`memberPermissions.${key}`] = value
+    }
+
+    const result = await GET_DB().collection(BOARD_COLLECTION_NAME).findOneAndUpdate(
+      { _id: new ObjectId(boardId) },
+      { $set: setObject },
+      { returnDocument: 'after' }
+    )
+
+    return result
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
 export const boardModel = {
   BOARD_COLLECTION_NAME,
   BOARD_COLLECTION_SCHEMA,
@@ -260,5 +289,7 @@ export const boardModel = {
   getBoards,
   pushMemberIds,
   pullMemberIds,
-  pushOwnerIds
+  pushOwnerIds,
+  pullOwnerIds,
+  updateMemberPermissions
 }

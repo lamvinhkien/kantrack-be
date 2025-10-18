@@ -41,19 +41,58 @@ const update = async (boardId, reqBody) => {
       updatedAt: Date.now()
     }
 
-    let updatedBoard = {}
+    let updatedBoard = null
 
-    if (updateData.removeMember) updatedBoard = await boardModel.pullMemberIds(boardId, updateData.removeMember._id)
+    if (updateData.removeMember) {
+      updatedBoard = await boardModel.pullMemberIds(boardId, updateData.removeMember._id)
+      return updatedBoard
+    }
 
     if (updateData.assignAdmin) {
-      updatedBoard = await boardModel.pullMemberIds(boardId, updateData.assignAdmin._id)
-      updatedBoard = await boardModel.pushOwnerIds(boardId, updateData.assignAdmin._id)
+      const adminId = updateData.assignAdmin._id
+      await boardModel.pullMemberIds(boardId, adminId)
+      updatedBoard = await boardModel.pushOwnerIds(boardId, adminId)
+      return updatedBoard
+    }
+
+    if (updateData.leaveBoard) {
+      const leaveUser = updateData.leaveBoard
+      const leaveUserId = leaveUser._id
+
+      const board = await boardModel.findOneById(boardId)
+      if (!board) throw new ApiError(StatusCodes.NOT_FOUND, 'Board not found.')
+
+      const ownerIds = (board.ownerIds || []).map(id => id.toString())
+      const memberIds = (board.memberIds || []).map(id => id.toString())
+
+      const isOwner = ownerIds.includes(leaveUserId)
+      const isLastOwner = isOwner && ownerIds.length === 1
+
+      if (isLastOwner) {
+        throw new ApiError(StatusCodes.FORBIDDEN, 'Cannot leave board as the last owner.')
+      }
+
+      if (memberIds.includes(leaveUserId)) {
+        updatedBoard = await boardModel.pullMemberIds(boardId, leaveUserId)
+      }
+
+      if (ownerIds.includes(leaveUserId)) {
+        updatedBoard = await boardModel.pullOwnerIds(boardId, leaveUserId)
+      }
+
+      return updatedBoard
+    }
+
+    if (updateData.updatePermissions) {
+      updatedBoard = await boardModel.updateMemberPermissions(boardId, updateData.updatePermissions)
+      return updatedBoard
     }
 
     updatedBoard = await boardModel.update(boardId, updateData)
-
     return updatedBoard
-  } catch (error) { throw error }
+  } catch (error) {
+    throw error
+  }
 }
 
 const moveCardToDifferentColumn = async (reqBody) => {
