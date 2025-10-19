@@ -18,8 +18,7 @@ const BOARD_COLLECTION_SCHEMA = Joi.object({
   memberPermissions: Joi.object({
     editBoardTitle: Joi.boolean().default(false),
     editBoardType: Joi.boolean().default(false),
-    deleteMemberInBoard: Joi.boolean().default(false),
-    inviteMemberToBoard: Joi.boolean().default(true),
+    inviteMemberToBoard: Joi.boolean().default(false),
 
     addColumn: Joi.boolean().default(true),
     editColumnTitle: Joi.boolean().default(true),
@@ -40,8 +39,7 @@ const BOARD_COLLECTION_SCHEMA = Joi.object({
   }).default({
     editBoardTitle: false,
     editBoardType: false,
-    deleteMemberInBoard: false,
-    inviteMemberToBoard: true,
+    inviteMemberToBoard: false,
     addColumn: true,
     editColumnTitle: true,
     deleteColumn: true,

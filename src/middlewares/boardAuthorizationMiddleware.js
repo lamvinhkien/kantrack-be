@@ -37,7 +37,6 @@ const actionMapFromRequest = (req) => {
   if (url.includes('/boards')) {
     if (method === 'PUT' && body.title) return 'editBoardTitle'
     if (method === 'PUT' && body.type) return 'editBoardType'
-    if (method === 'PUT' && body.removeMember) return 'deleteMemberInBoard'
     if (method === 'PUT' && body.columnOrderIds) return 'moveColumn'
     if (method === 'PUT' && body.currentCardId && body.nextColumnId) return 'moveCard'
   }
@@ -85,30 +84,23 @@ const isAuthorized = () => async (req, res, next) => {
     const isOwner = ownerIds.includes(userId)
     const isMember = memberIds.includes(userId)
 
-    // ===== Rule 1: Cho phép GET nếu public hoặc là member/owner =====
     if (req.method === 'GET') {
       if (board.type === 'public' || isOwner || isMember) return next()
       throw new ApiError(StatusCodes.FORBIDDEN, 'You do not have permission to view this board.')
     }
 
-    // ===== Rule 2: PUBLIC actions (ví dụ leaveBoard) - ai cũng có thể làm =====
     if (BOARD_PUBLIC_ACTION.some(key => req.body?.[key])) return next()
 
-    // ===== Rule 3: OWNER only actions (ví dụ updatePermissions) =====
     if (BOARD_OWNER_ACTIONS.some(key => req.body?.[key])) {
-      if (!isOwner)
-        throw new ApiError(StatusCodes.FORBIDDEN, 'Only board owners can perform this action.')
+      if (!isOwner) throw new ApiError(StatusCodes.FORBIDDEN, 'Only board owners can perform this action.')
       return next()
     }
 
-    // ===== Rule 4: Owner toàn quyền =====
     if (isOwner) return next()
 
-    // ===== Rule 5: Member có quyền theo permission =====
     if (isMember) {
       const actionKey = actionMapFromRequest(req)
 
-      // Nếu không có actionKey (tức là không nằm trong danh sách quản lý), cho phép
       if (!actionKey) return next()
 
       const perms = board.memberPermissions || {}
@@ -117,11 +109,8 @@ const isAuthorized = () => async (req, res, next) => {
       throw new ApiError(StatusCodes.FORBIDDEN, 'You are not allowed to perform this action.')
     }
 
-    // ===== Rule 6: Người ngoài board =====
     throw new ApiError(StatusCodes.FORBIDDEN, 'You are not a member of this board.')
-  } catch (error) {
-    next(error)
-  }
+  } catch (error) { next(error) }
 }
 
 export const boardAuthMiddleware = { isAuthorized }

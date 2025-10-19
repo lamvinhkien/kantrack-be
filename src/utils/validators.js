@@ -9,7 +9,7 @@ export const PASSWORD_RULE_MESSAGE = 'Password must include at least 1 letter, a
 
 export const DUE_TIME_RULE = /^([01]\d|2[0-3]):([0-5]\d)$/
 
-export const LIMIT_COMMON_FILE_SIZE = 31457280
+export const LIMIT_COMMON_FILE_SIZE = 9437184
 export const ALLOW_COMMON_FILE_TYPES = [
   'image/jpeg',
   'image/png',
