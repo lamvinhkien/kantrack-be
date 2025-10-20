@@ -3,7 +3,7 @@ import { columnModel } from '~/models/columnModel'
 import { cardModel } from '~/models/cardModel'
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError'
-import { BOARD_PUBLIC_ACTION, BOARD_OWNER_ACTIONS } from '~/utils/constants'
+import { BOARD_PUBLIC_ACTIONS, BOARD_OWNER_ACTIONS, BOARD_MEMBER_ACTIONS } from '~/utils/constants'
 
 const findBoardIdFromRequest = async (req) => {
   const { id } = req.params
@@ -35,34 +35,34 @@ const actionMapFromRequest = (req) => {
   const files = req.files || {}
 
   if (url.includes('/boards')) {
-    if (method === 'PUT' && body.title) return 'editBoardTitle'
-    if (method === 'PUT' && body.type) return 'editBoardType'
-    if (method === 'PUT' && body.columnOrderIds) return 'moveColumn'
-    if (method === 'PUT' && body.currentCardId && body.nextColumnId) return 'moveCard'
+    if (method === 'PUT' && body.title) return BOARD_MEMBER_ACTIONS.editBoardTitle
+    if (method === 'PUT' && body.type) return BOARD_MEMBER_ACTIONS.editBoardType
+    if (method === 'PUT' && body.columnOrderIds) return BOARD_MEMBER_ACTIONS.moveColumn
+    if (method === 'PUT' && body.currentCardId && body.nextColumnId) return BOARD_MEMBER_ACTIONS.moveCard
   }
 
   if (url.includes('/invitations')) {
-    if (method === 'POST' && body.inviteeEmail) return 'inviteMemberToBoard'
+    if (method === 'POST' && body.inviteeEmail) return BOARD_MEMBER_ACTIONS.inviteMemberToBoard
   }
 
   if (url.includes('/columns')) {
-    if (method === 'POST' && body.title) return 'addColumn'
-    if (method === 'PUT' && body.title) return 'editColumnTitle'
-    if (method === 'DELETE' && params.id) return 'deleteColumn'
-    if (method === 'PUT' && body.cardOrderIds) return 'moveCard'
+    if (method === 'POST' && body.title) return BOARD_MEMBER_ACTIONS.addColumn
+    if (method === 'PUT' && body.title) return BOARD_MEMBER_ACTIONS.editColumnTitle
+    if (method === 'DELETE' && params.id) return BOARD_MEMBER_ACTIONS.deleteColumn
+    if (method === 'PUT' && body.cardOrderIds) return BOARD_MEMBER_ACTIONS.moveCard
   }
 
   if (url.includes('/cards')) {
-    if (method === 'POST' && body.title) return 'addCard'
-    if (method === 'PUT' && body.title) return 'editCardTitle'
-    if (method === 'PUT' && body.description) return 'editCardDescription'
-    if ((method === 'PUT') && (files.cardCover || body.coverToDelete)) return 'editCardCover'
-    if ((method === 'PUT') && (files.cardAttachments || body.newAttachment)) return 'editCardAttachment'
-    if (method === 'PUT' && body.incomingMemberInfo) return 'editCardMember'
-    if (method === 'PUT' && body.dates) return 'editCardDate'
-    if (method === 'PUT' && body.comment) return 'editCardComment'
-    if (method === 'PUT' && body.complete !== undefined) return 'editCardMarkComplete'
-    if (method === 'DELETE' && params.id) return 'deleteCard'
+    if (method === 'POST' && body.title) return BOARD_MEMBER_ACTIONS.moveCard
+    if (method === 'PUT' && body.title) return BOARD_MEMBER_ACTIONS.editCardTitle
+    if (method === 'PUT' && body.description) return BOARD_MEMBER_ACTIONS.editCardDescription
+    if ((method === 'PUT') && (files.cardCover || body.coverToDelete)) return BOARD_MEMBER_ACTIONS.editCardCover
+    if ((method === 'PUT') && (files.cardAttachments || body.newAttachment)) return BOARD_MEMBER_ACTIONS.editCardAttachment
+    if (method === 'PUT' && body.incomingMemberInfo) return BOARD_MEMBER_ACTIONS.editCardMember
+    if (method === 'PUT' && body.dates) return BOARD_MEMBER_ACTIONS.editCardDate
+    if (method === 'PUT' && body.comment) return BOARD_MEMBER_ACTIONS.editCardComment
+    if (method === 'PUT' && body.complete !== undefined) return BOARD_MEMBER_ACTIONS.editCardMarkComplete
+    if (method === 'DELETE' && params.id) return BOARD_MEMBER_ACTIONS.deleteCard
   }
 
   return null
@@ -89,7 +89,7 @@ const isAuthorized = () => async (req, res, next) => {
       throw new ApiError(StatusCodes.FORBIDDEN, 'You do not have permission to view this board.')
     }
 
-    if (BOARD_PUBLIC_ACTION.some(key => req.body?.[key])) return next()
+    if (BOARD_PUBLIC_ACTIONS.some(key => req.body?.[key])) return next()
 
     if (BOARD_OWNER_ACTIONS.some(key => req.body?.[key])) {
       if (!isOwner) throw new ApiError(StatusCodes.FORBIDDEN, 'Only board owners can perform this action.')

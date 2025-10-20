@@ -21,5 +21,28 @@ export const CARD_ATTACHMENT_ACTIONS = { EDIT: 'EDIT', REMOVE: 'REMOVE' }
 
 export const SETUP_2FA_ACTIONS = { ENABLE: 'Enable', DISABLE: 'Disable' }
 
-export const BOARD_PUBLIC_ACTION = ['leaveBoard']
+export const BOARD_PUBLIC_ACTIONS = ['leaveBoard']
 export const BOARD_OWNER_ACTIONS = ['updatePermissions', 'assignAdmin', 'removeMember']
+export const BOARD_MEMBER_ACTIONS = {
+  editBoardTitle: 'editBoardTitle',
+  editBoardType: 'editBoardType',
+  inviteMemberToBoard: 'inviteMemberToBoard',
+
+  addColumn: 'addColumn',
+  editColumnTitle: 'editColumnTitle',
+  deleteColumn: 'deleteColumn',
+  moveColumn: 'moveColumn',
+
+  addCard: 'addCard',
+  editCardTitle: 'editCardTitle',
+  editCardDescription: 'editCardDescription',
+  editCardCover: 'editCardCover',
+  editCardMember: 'editCardMember',
+  editCardDate: 'editCardDate',
+  editCardAttachment: 'editCardAttachment',
+  editCardComment: 'editCardComment',
+  editCardMarkComplete: 'editCardMarkComplete',
+  deleteCard: 'deleteCard',
+  moveCard: 'moveCard'
+}
+
