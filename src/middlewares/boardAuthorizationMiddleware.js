@@ -53,7 +53,7 @@ const actionMapFromRequest = (req) => {
   }
 
   if (url.includes('/cards')) {
-    if (method === 'POST' && body.title) return BOARD_MEMBER_ACTIONS.moveCard
+    if (method === 'POST' && body.title) return BOARD_MEMBER_ACTIONS.addCard
     if (method === 'PUT' && body.title) return BOARD_MEMBER_ACTIONS.editCardTitle
     if (method === 'PUT' && body.description) return BOARD_MEMBER_ACTIONS.editCardDescription
     if ((method === 'PUT') && (files.cardCover || body.coverToDelete)) return BOARD_MEMBER_ACTIONS.editCardCover
