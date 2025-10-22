@@ -22,20 +22,20 @@ const BOARD_COLLECTION_SCHEMA = Joi.object({
 
     addColumn: Joi.boolean().default(true),
     editColumnTitle: Joi.boolean().default(true),
-    deleteColumn: Joi.boolean().default(true),
     moveColumn: Joi.boolean().default(true),
+    deleteColumn: Joi.boolean().default(true),
 
     addCard: Joi.boolean().default(true),
     editCardTitle: Joi.boolean().default(true),
     editCardDescription: Joi.boolean().default(true),
     editCardCover: Joi.boolean().default(true),
-    editCardMember: Joi.boolean().default(true),
     editCardDate: Joi.boolean().default(true),
+    editCardMember: Joi.boolean().default(true),
     editCardAttachment: Joi.boolean().default(true),
     editCardComment: Joi.boolean().default(true),
     editCardMarkComplete: Joi.boolean().default(true),
-    deleteCard: Joi.boolean().default(true),
-    moveCard: Joi.boolean().default(true)
+    moveCard: Joi.boolean().default(true),
+    deleteCard: Joi.boolean().default(true)
   }).default({
     editBoardTitle: false,
     editBoardType: false,
@@ -48,13 +48,13 @@ const BOARD_COLLECTION_SCHEMA = Joi.object({
     editCardTitle: true,
     editCardDescription: true,
     editCardCover: true,
-    editCardMember: true,
     editCardDate: true,
+    editCardMember: true,
     editCardAttachment: true,
     editCardComment: true,
     editCardMarkComplete: true,
-    deleteCard: true,
-    moveCard: true
+    moveCard: true,
+    deleteCard: true
   }),
   createdAt: Joi.date().timestamp('javascript').default(Date.now),
   updatedAt: Joi.date().timestamp('javascript').default(null),
