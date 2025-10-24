@@ -107,6 +107,14 @@ const verify2FA = async (req, res, next) => {
   } catch (error) { next(error) }
 }
 
+const getRecentBoards = async (req, res, next) => {
+  try {
+    const userId = req.jwtDecoded._id
+    const recentBoards = await userService.getRecentBoards(userId)
+    res.status(StatusCodes.OK).json(recentBoards)
+  } catch (error) { next(error) }
+}
+
 export const userController = {
   createNew,
   verifyAccount,
@@ -116,5 +124,6 @@ export const userController = {
   update,
   get2FA_QRCode,
   setup2FA,
-  verify2FA
+  verify2FA,
+  getRecentBoards
 }

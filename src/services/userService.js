@@ -14,6 +14,7 @@ import { userSessionModel } from '~/models/userSessionModel'
 import { authenticator } from 'otplib'
 import { SETUP_2FA_ACTIONS } from '~/utils/constants'
 import qrcode from 'qrcode'
+import { boardModel } from '~/models/boardModel'
 
 const createNew = async (reqBody) => {
   try {
@@ -241,6 +242,44 @@ const verify2FA = async (email, otpToken, deviceId) => {
   } catch (error) { throw error }
 }
 
+const getRecentBoards = async (userId) => {
+  try {
+    const user = await userModel.findOneById(userId)
+    if (!user?.recentBoards || user.recentBoards.length === 0) return []
+
+    const boardIds = user.recentBoards.map(item => item.boardId)
+
+    const boards = await boardModel.getBoardsByIds(boardIds)
+
+    const boardsMap = new Map(boards.map(b => [b._id.toString(), b]))
+    return user.recentBoards
+      .map(item => boardsMap.get(item.boardId))
+      .filter(Boolean)
+  } catch (error) {
+    throw error
+  }
+}
+
+const updateRecentBoards = async (userId, boardId) => {
+  try {
+    const user = await userModel.findOneById(userId)
+    if (!user) return null
+
+    let recent = user.recentBoards || []
+
+    recent = recent.filter(item => item.boardId !== boardId)
+
+    recent.unshift({
+      boardId,
+      viewedAt: Date.now()
+    })
+
+    if (recent.length > 12) recent = recent.slice(0, 12)
+
+    return await userModel.update(userId, { recentBoards: recent })
+  } catch (error) { throw error }
+}
+
 export const userService = {
   createNew,
   verifyAccount,
@@ -250,5 +289,7 @@ export const userService = {
   update,
   get2FA_QRCode,
   setup2FA,
-  verify2FA
+  verify2FA,
+  getRecentBoards,
+  updateRecentBoards
 }

@@ -7,6 +7,7 @@ import { columnModel } from './columnModel'
 import { cardModel } from './cardModel'
 import { userModel } from './userModel'
 import { pagingSkipValue } from '~/utils/algorithms'
+import { DEFAULT_PAGE, DEFAULT_ITEMS_PER_PAGE } from '~/utils/constants'
 
 const BOARD_COLLECTION_NAME = 'boards'
 const BOARD_COLLECTION_SCHEMA = Joi.object({
@@ -30,9 +31,9 @@ const BOARD_COLLECTION_SCHEMA = Joi.object({
     editCardDescription: Joi.boolean().default(true),
     editCardCover: Joi.boolean().default(true),
     editCardDate: Joi.boolean().default(true),
+    editCardComment: Joi.boolean().default(true),
     editCardMember: Joi.boolean().default(true),
     editCardAttachment: Joi.boolean().default(true),
-    editCardComment: Joi.boolean().default(true),
     editCardMarkComplete: Joi.boolean().default(true),
     moveCard: Joi.boolean().default(true),
     deleteCard: Joi.boolean().default(true)
@@ -40,18 +41,20 @@ const BOARD_COLLECTION_SCHEMA = Joi.object({
     editBoardTitle: false,
     editBoardType: false,
     inviteMemberToBoard: false,
+
     addColumn: true,
     editColumnTitle: true,
-    deleteColumn: true,
     moveColumn: true,
+    deleteColumn: true,
+
     addCard: true,
     editCardTitle: true,
     editCardDescription: true,
     editCardCover: true,
     editCardDate: true,
+    editCardComment: true,
     editCardMember: true,
     editCardAttachment: true,
-    editCardComment: true,
     editCardMarkComplete: true,
     moveCard: true,
     deleteCard: true
@@ -176,43 +179,76 @@ const pullColumnOrderIds = async (column) => {
   } catch (error) { throw new Error(error) }
 }
 
-const getBoards = async (userId, page, itemsPerPage, queryFilters) => {
+const getBoards = async (userId, ownerPage, memberPage, itemsPerPage, queryFilters) => {
   try {
-    const queryConditions = [
-      { _destroy: false },
-      {
-        $or: [
-          { ownerIds: { $all: [new ObjectId(userId)] } },
-          { memberIds: { $all: [new ObjectId(userId)] } }
-        ]
-      }
-    ]
+    if (!ownerPage) ownerPage = DEFAULT_PAGE
+    if (!memberPage) memberPage = DEFAULT_PAGE
+    if (!itemsPerPage) itemsPerPage = DEFAULT_ITEMS_PER_PAGE
 
-    if (queryFilters) {
+    const commonConditions = [{ _destroy: false }]
+
+    if (queryFilters && Object.keys(queryFilters).length > 0) {
       Object.keys(queryFilters).forEach(key => {
-        // queryConditions.push({ [key]: { $regex: queryFilters[key] } })
-        queryConditions.push({ [key]: { $regex: new RegExp(queryFilters[key], 'i') } })
+        const value = queryFilters[key]
+        if (value && typeof value === 'string') {
+          commonConditions.push({ [key]: { $regex: new RegExp(value, 'i') } })
+        }
       })
     }
 
-    const result = await GET_DB().collection(BOARD_COLLECTION_NAME).aggregate(
-      [
-        { $match: { $and: queryConditions } },
-        { $sort: { title: 1 } },
-        {
-          $facet: {
-            'queryBoards': [
-              { $skip: pagingSkipValue(page, itemsPerPage) },
-              { $limit: itemsPerPage }
-            ],
-            'queryTotalBoards': [{ $count: 'countedAllBoards' }]
-          }
-        }
-      ],
-      { collation: { locale: 'en' } }
-    ).toArray()
+    const collection = GET_DB().collection(BOARD_COLLECTION_NAME)
 
-    return { boards: result[0].queryBoards || [], totalBoards: result[0].queryTotalBoards[0]?.countedAllBoards || 0 }
+    const ownerResult = await collection.aggregate([
+      {
+        $match: {
+          $and: [
+            ...commonConditions,
+            { ownerIds: { $all: [new ObjectId(userId)] } }
+          ]
+        }
+      },
+      // 🔁 Sắp xếp theo ngày tạo mới nhất (giảm dần)
+      { $sort: { createdAt: -1 } },
+      {
+        $facet: {
+          queryBoards: [
+            { $skip: pagingSkipValue(ownerPage, itemsPerPage) },
+            { $limit: itemsPerPage }
+          ],
+          queryTotalBoards: [{ $count: 'countedAllBoards' }]
+        }
+      }
+    ], { collation: { locale: 'en' } }).toArray()
+
+    const memberResult = await collection.aggregate([
+      {
+        $match: {
+          $and: [
+            ...commonConditions,
+            { memberIds: { $all: [new ObjectId(userId)] } },
+            { ownerIds: { $nin: [new ObjectId(userId)] } }
+          ]
+        }
+      },
+      // 🔁 Tương tự ở đây
+      { $sort: { createdAt: -1 } },
+      {
+        $facet: {
+          queryBoards: [
+            { $skip: pagingSkipValue(memberPage, itemsPerPage) },
+            { $limit: itemsPerPage }
+          ],
+          queryTotalBoards: [{ $count: 'countedAllBoards' }]
+        }
+      }
+    ], { collation: { locale: 'en' } }).toArray()
+
+    return {
+      ownerBoards: ownerResult[0]?.queryBoards || [],
+      totalOwnerBoards: ownerResult[0]?.queryTotalBoards?.[0]?.countedAllBoards || 0,
+      memberBoards: memberResult[0]?.queryBoards || [],
+      totalMemberBoards: memberResult[0]?.queryTotalBoards?.[0]?.countedAllBoards || 0
+    }
   } catch (error) { throw new Error(error) }
 }
 
@@ -256,6 +292,18 @@ const pullOwnerIds = async (boardId, userId) => {
   } catch (error) { throw new Error(error) }
 }
 
+const getBoardsByIds = async (boardIds) => {
+  try {
+    const objectIds = boardIds.map(id => new ObjectId(id))
+    return await GET_DB()
+      .collection(BOARD_COLLECTION_NAME)
+      .find({ _id: { $in: objectIds }, _destroy: false })
+      .toArray()
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
 const updateMemberPermissions = async (boardId, updatePermissions) => {
   try {
     const setObject = {}
@@ -289,5 +337,6 @@ export const boardModel = {
   pullMemberIds,
   pushOwnerIds,
   pullOwnerIds,
+  getBoardsByIds,
   updateMemberPermissions
 }

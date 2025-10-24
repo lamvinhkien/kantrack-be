@@ -1,5 +1,6 @@
 import { StatusCodes } from 'http-status-codes'
 import { boardService } from '~/services/boardService'
+import { userService } from '~/services/userService'
 
 const createNew = async (req, res, next) => {
   try {
@@ -12,7 +13,9 @@ const createNew = async (req, res, next) => {
 const getDetails = async (req, res, next) => {
   try {
     const boardId = req.params.id
+    const userId = req.jwtDecoded._id
     const board = await boardService.getDetails(boardId)
+    await userService.updateRecentBoards(userId, boardId)
     res.status(StatusCodes.OK).json(board)
   } catch (error) { next(error) }
 }
@@ -34,9 +37,16 @@ const moveCardToDifferentColumn = async (req, res, next) => {
 const getBoards = async (req, res, next) => {
   try {
     const userId = req.jwtDecoded._id
-    const { page, itemsPerPage, q } = req.query
-    const queryFilters = q
-    const results = await boardService.getBoards(userId, page, itemsPerPage, queryFilters)
+    const { ownerPage, memberPage, itemsPerPage, ...rest } = req.query
+
+    let queryFilters = {}
+    if (rest.q && typeof rest.q === 'object') {
+      queryFilters = rest.q
+    } else if (typeof rest['q[title]'] === 'string') {
+      queryFilters = { title: rest['q[title]'] }
+    }
+
+    const results = await boardService.getBoards(userId, ownerPage, memberPage, itemsPerPage, queryFilters)
 
     res.status(StatusCodes.OK).json(results)
   } catch (error) { next(error) }

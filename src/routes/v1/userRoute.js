@@ -33,4 +33,7 @@ Router.route('/setup_2fa')
 Router.route('/verify_2fa')
   .put(userController.verify2FA)
 
+Router.route('/recent_boards')
+  .get(authMiddleware.isAuthorized, userController.getRecentBoards)
+
 export const userRoute = Router
