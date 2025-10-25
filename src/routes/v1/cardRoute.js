@@ -10,7 +10,7 @@ const Router = express.Router()
 Router.route('/')
   .post(
     authMiddleware.isAuthorized,
-    boardAuthMiddleware.isAuthorized('edit'),
+    boardAuthMiddleware.isAuthorized(),
     cardValidation.createNew,
     cardController.createNew
   )

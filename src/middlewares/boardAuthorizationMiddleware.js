@@ -91,6 +91,11 @@ const isAuthorized = () => async (req, res, next) => {
 
     if (BOARD_PUBLIC_ACTIONS.some(key => req.body?.[key])) return next()
 
+    if (req.method === 'DELETE') {
+      if (isOwner) return next()
+      throw new ApiError(StatusCodes.FORBIDDEN, 'Only board owners can perform this action.')
+    }
+
     if (BOARD_OWNER_ACTIONS.some(key => req.body?.[key])) {
       if (!isOwner) throw new ApiError(StatusCodes.FORBIDDEN, 'Only board owners can perform this action.')
       return next()

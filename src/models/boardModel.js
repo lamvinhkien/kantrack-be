@@ -365,6 +365,12 @@ const updateMemberPermissions = async (boardId, updatePermissions) => {
   }
 }
 
+const deleteOneById = async (id) => {
+  try {
+    return await GET_DB().collection(BOARD_COLLECTION_NAME).deleteOne({ _id: new ObjectId(id) })
+  } catch (error) { throw new Error(error) }
+}
+
 export const boardModel = {
   BOARD_COLLECTION_NAME,
   BOARD_COLLECTION_SCHEMA,
@@ -380,5 +386,6 @@ export const boardModel = {
   pushOwnerIds,
   pullOwnerIds,
   getBoardsByIds,
-  updateMemberPermissions
+  updateMemberPermissions,
+  deleteOneById
 }

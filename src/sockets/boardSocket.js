@@ -7,6 +7,10 @@ export const boardSocket = (socket) => {
     socket.leave(boardId)
   })
 
+  socket.on('FE_DELETE_BOARD', (boardId) => {
+    socket.to(boardId).emit('BE_DELETE_BOARD', boardId)
+  })
+
   socket.on('FE_UPDATE_BOARD', ({ boardId, board }) => {
     socket.to(boardId).emit('BE_UPDATE_BOARD', board)
   })

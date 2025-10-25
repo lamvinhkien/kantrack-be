@@ -34,6 +34,13 @@ const findOneById = async (id) => {
   } catch (error) { throw new Error(error) }
 }
 
+const findAllByBoardId = async (boardId) => {
+  try {
+    return await GET_DB().collection(COLUMN_COLLECTION_NAME).find({ boardId: new ObjectId(boardId) }).toArray()
+  } catch (error) { throw new Error(error) }
+}
+
+
 const pushCardOrderIds = async (card) => {
   try {
     return await GET_DB().collection(COLUMN_COLLECTION_NAME).findOneAndUpdate(
@@ -80,13 +87,21 @@ const deleteOneById = async (id) => {
   } catch (error) { throw new Error(error) }
 }
 
+const deleteManyByBoardId = async (boardId) => {
+  try {
+    return await GET_DB().collection(COLUMN_COLLECTION_NAME).deleteMany({ boardId: new ObjectId(boardId) })
+  } catch (error) { throw new Error(error) }
+}
+
 export const columnModel = {
   COLUMN_COLLECTION_NAME,
   COLUMN_COLLECTION_SCHEMA,
   createNew,
   findOneById,
+  findAllByBoardId,
   pushCardOrderIds,
   pullCardOrderIds,
   update,
-  deleteOneById
+  deleteOneById,
+  deleteManyByBoardId
 }

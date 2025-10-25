@@ -5,6 +5,7 @@ import { cloneDeep } from 'lodash'
 import { columnModel } from '~/models/columnModel'
 import { cardModel } from '~/models/cardModel'
 import { DEFAULT_PAGE, DEFAULT_ITEMS_PER_PAGE } from '~/utils/constants'
+import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
 
 const createNew = async (userId, reqBody) => {
   try {
@@ -134,10 +135,45 @@ const getBoards = async (userId, ownerPage, memberPage, favouritePage, itemsPerP
   } catch (error) { throw error }
 }
 
+const deleteItem = async (boardId) => {
+  try {
+    const targetBoard = await boardModel.findOneById(boardId)
+    if (!targetBoard) {
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Board not found.')
+    }
+
+    const columns = await columnModel.findAllByBoardId(boardId)
+    for (const column of columns) {
+      const cards = await cardModel.findAllByColumnId(column._id)
+      for (const card of cards) {
+        if (card.cover?.publicId) {
+          await CloudinaryProvider.deleteFile(card.cover.publicId)
+        }
+
+        if (card.attachments?.length) {
+          await Promise.all(
+            card.attachments
+              .filter(att => att.type === 'file' && att.publicId)
+              .map(att => CloudinaryProvider.deleteFile(att.publicId))
+          )
+        }
+      }
+      await cardModel.deleteManyByColumnId(column._id)
+    }
+
+    await columnModel.deleteManyByBoardId(boardId)
+
+    await boardModel.deleteOneById(boardId)
+
+    return { deleteResult: 'Board and all related data have been deleted.' }
+  } catch (error) { throw error }
+}
+
 export const boardService = {
   createNew,
   getDetails,
   update,
   moveCardToDifferentColumn,
-  getBoards
+  getBoards,
+  deleteItem
 }
