@@ -130,17 +130,48 @@ const refreshToken = async (clientRefreshToken) => {
 
 const update = async (userId, reqBody, userAvatarFile, deviceId) => {
   try {
-    if (!deviceId) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Please login again.')
+    if (!deviceId)
+      throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Please login again.')
 
     const existUser = await userModel.findOneById(userId)
-    if (!existUser) throw new ApiError(StatusCodes.NOT_FOUND, 'Account not found.')
-    if (!existUser.isActive) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is not active.')
+    if (!existUser)
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Account not found.')
+    if (!existUser.isActive)
+      throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is not active.')
 
-    let updatedUser = {}
+    const updateData = {}
+
+    if (reqBody.recentAction && reqBody.boardId) {
+      const boardId = reqBody.boardId
+      let recent = existUser.recentBoards || []
+
+      recent = recent.filter(item => item.boardId !== boardId)
+      recent.unshift({ boardId, viewedAt: Date.now() })
+      if (recent.length > 12) recent = recent.slice(0, 12)
+
+      updateData.recentBoards = recent
+    }
+
+    if (reqBody.favouriteAction && reqBody.boardId) {
+      const boardId = reqBody.boardId
+      let favourite = existUser.favouriteBoards || []
+
+      const isFavourited = favourite.some(item => item.boardId === boardId)
+
+      if (isFavourited) {
+        favourite = favourite.filter(item => item.boardId !== boardId)
+      } else {
+        favourite.unshift({ boardId, viewedAt: Date.now() })
+      }
+
+      updateData.favouriteBoards = favourite
+    }
 
     if (reqBody.current_password && reqBody.new_password) {
-      if (!bcryptjs.compareSync(reqBody.current_password, existUser.password)) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your current password is incorrect.')
-      updatedUser = await userModel.update(userId, { password: bcryptjs.hashSync(reqBody.new_password, 8) })
+      const valid = bcryptjs.compareSync(reqBody.current_password, existUser.password)
+      if (!valid)
+        throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your current password is incorrect.')
+      updateData.password = bcryptjs.hashSync(reqBody.new_password, 8)
     }
 
     if (userAvatarFile) {
@@ -155,10 +186,26 @@ const update = async (userId, reqBody, userAvatarFile, deviceId) => {
         `${uuidv4()}-${userAvatarFile.originalname}`
       )
 
-      updatedUser = await userModel.update(userId, { avatar: { url: uploadResult.secure_url, publicId: uploadResult.public_id } })
+      updateData.avatar = {
+        url: uploadResult.secure_url,
+        publicId: uploadResult.public_id
+      }
     }
 
-    updatedUser = await userModel.update(userId, reqBody)
+    const excludedFields = [
+      'recentAction',
+      'favouriteAction',
+      'boardId',
+      'current_password',
+      'new_password'
+    ]
+    for (const key in reqBody) {
+      if (!excludedFields.includes(key)) {
+        updateData[key] = reqBody[key]
+      }
+    }
+
+    const updatedUser = await userModel.update(userId, updateData)
 
     const currentSession = await userSessionModel.findOneByUserAndDeviceId(existUser._id, deviceId)
 
@@ -260,26 +307,6 @@ const getRecentBoards = async (userId) => {
   }
 }
 
-const updateRecentBoards = async (userId, boardId) => {
-  try {
-    const user = await userModel.findOneById(userId)
-    if (!user) return null
-
-    let recent = user.recentBoards || []
-
-    recent = recent.filter(item => item.boardId !== boardId)
-
-    recent.unshift({
-      boardId,
-      viewedAt: Date.now()
-    })
-
-    if (recent.length > 12) recent = recent.slice(0, 12)
-
-    return await userModel.update(userId, { recentBoards: recent })
-  } catch (error) { throw error }
-}
-
 export const userService = {
   createNew,
   verifyAccount,
@@ -290,6 +317,5 @@ export const userService = {
   get2FA_QRCode,
   setup2FA,
   verify2FA,
-  getRecentBoards,
-  updateRecentBoards
+  getRecentBoards
 }

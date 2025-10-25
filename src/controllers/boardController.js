@@ -14,8 +14,9 @@ const getDetails = async (req, res, next) => {
   try {
     const boardId = req.params.id
     const userId = req.jwtDecoded._id
+    const deviceId = req.cookies.deviceId || null
     const board = await boardService.getDetails(boardId)
-    await userService.updateRecentBoards(userId, boardId)
+    await userService.update(userId, { recentAction: true, boardId }, null, deviceId)
     res.status(StatusCodes.OK).json(board)
   } catch (error) { next(error) }
 }
@@ -37,7 +38,7 @@ const moveCardToDifferentColumn = async (req, res, next) => {
 const getBoards = async (req, res, next) => {
   try {
     const userId = req.jwtDecoded._id
-    const { ownerPage, memberPage, itemsPerPage, ...rest } = req.query
+    const { ownerPage, memberPage, favouritePage, itemsPerPage, ...rest } = req.query
 
     let queryFilters = {}
     if (rest.q && typeof rest.q === 'object') {
@@ -46,7 +47,14 @@ const getBoards = async (req, res, next) => {
       queryFilters = { title: rest['q[title]'] }
     }
 
-    const results = await boardService.getBoards(userId, ownerPage, memberPage, itemsPerPage, queryFilters)
+    const results = await boardService.getBoards(
+      userId,
+      ownerPage,
+      memberPage,
+      favouritePage,
+      itemsPerPage,
+      queryFilters
+    )
 
     res.status(StatusCodes.OK).json(results)
   } catch (error) { next(error) }

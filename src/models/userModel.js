@@ -27,6 +27,10 @@ const USER_COLLECTION_SCHEMA = Joi.object({
     boardId: Joi.string().required(),
     viewedAt: Joi.date().timestamp('javascript').default(Date.now)
   })).default([]),
+  favouriteBoards: Joi.array().items(Joi.object({
+    boardId: Joi.string().required(),
+    viewedAt: Joi.date().timestamp('javascript').default(Date.now)
+  })).default([]),
   createdAt: Joi.date().timestamp('javascript').default(Date.now),
   updatedAt: Joi.date().timestamp('javascript').default(null),
   _destroy: Joi.boolean().default(false)

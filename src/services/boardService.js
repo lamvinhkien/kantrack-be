@@ -4,6 +4,7 @@ import { StatusCodes } from 'http-status-codes'
 import { cloneDeep } from 'lodash'
 import { columnModel } from '~/models/columnModel'
 import { cardModel } from '~/models/cardModel'
+import { DEFAULT_PAGE, DEFAULT_ITEMS_PER_PAGE } from '~/utils/constants'
 
 const createNew = async (userId, reqBody) => {
   try {
@@ -115,9 +116,21 @@ const moveCardToDifferentColumn = async (reqBody) => {
   } catch (error) { throw error }
 }
 
-const getBoards = async (userId, ownerPage, memberPage, itemsPerPage, queryFilters) => {
+const getBoards = async (userId, ownerPage, memberPage, favouritePage, itemsPerPage, queryFilters) => {
   try {
-    return await boardModel.getBoards(userId, parseInt(ownerPage, 10), parseInt(memberPage, 10), parseInt(itemsPerPage, 10), queryFilters)
+    const safeOwnerPage = Number(ownerPage) || DEFAULT_PAGE
+    const safeMemberPage = Number(memberPage) || DEFAULT_PAGE
+    const safeFavouritePage = Number(favouritePage) || DEFAULT_PAGE
+    const safeItemsPerPage = Number(itemsPerPage) || DEFAULT_ITEMS_PER_PAGE
+
+    return await boardModel.getBoards(
+      userId,
+      safeOwnerPage,
+      safeMemberPage,
+      safeFavouritePage,
+      safeItemsPerPage,
+      queryFilters
+    )
   } catch (error) { throw error }
 }
 

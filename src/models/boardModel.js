@@ -179,12 +179,16 @@ const pullColumnOrderIds = async (column) => {
   } catch (error) { throw new Error(error) }
 }
 
-const getBoards = async (userId, ownerPage, memberPage, itemsPerPage, queryFilters) => {
+const getBoards = async (
+  userId,
+  ownerPage = DEFAULT_PAGE,
+  memberPage = DEFAULT_PAGE,
+  favouritePage = DEFAULT_PAGE,
+  itemsPerPage = DEFAULT_ITEMS_PER_PAGE,
+  queryFilters = {}
+) => {
   try {
-    if (!ownerPage) ownerPage = DEFAULT_PAGE
-    if (!memberPage) memberPage = DEFAULT_PAGE
-    if (!itemsPerPage) itemsPerPage = DEFAULT_ITEMS_PER_PAGE
-
+    const collection = GET_DB().collection(BOARD_COLLECTION_NAME)
     const commonConditions = [{ _destroy: false }]
 
     if (queryFilters && Object.keys(queryFilters).length > 0) {
@@ -196,8 +200,7 @@ const getBoards = async (userId, ownerPage, memberPage, itemsPerPage, queryFilte
       })
     }
 
-    const collection = GET_DB().collection(BOARD_COLLECTION_NAME)
-
+    const user = await userModel.findOneById(userId)
     const ownerResult = await collection.aggregate([
       {
         $match: {
@@ -207,7 +210,6 @@ const getBoards = async (userId, ownerPage, memberPage, itemsPerPage, queryFilte
           ]
         }
       },
-      // 🔁 Sắp xếp theo ngày tạo mới nhất (giảm dần)
       { $sort: { createdAt: -1 } },
       {
         $facet: {
@@ -218,7 +220,7 @@ const getBoards = async (userId, ownerPage, memberPage, itemsPerPage, queryFilte
           queryTotalBoards: [{ $count: 'countedAllBoards' }]
         }
       }
-    ], { collation: { locale: 'en' } }).toArray()
+    ]).toArray()
 
     const memberResult = await collection.aggregate([
       {
@@ -230,7 +232,6 @@ const getBoards = async (userId, ownerPage, memberPage, itemsPerPage, queryFilte
           ]
         }
       },
-      // 🔁 Tương tự ở đây
       { $sort: { createdAt: -1 } },
       {
         $facet: {
@@ -241,13 +242,54 @@ const getBoards = async (userId, ownerPage, memberPage, itemsPerPage, queryFilte
           queryTotalBoards: [{ $count: 'countedAllBoards' }]
         }
       }
-    ], { collation: { locale: 'en' } }).toArray()
+    ]).toArray()
+
+    let favouriteBoards = []
+    let totalFavouriteBoards = 0
+
+    if (user?.favouriteBoards?.length > 0) {
+      const boardIds = user.favouriteBoards.map(item => new ObjectId(item.boardId))
+
+      const favouriteResult = await collection.aggregate([
+        {
+          $match: {
+            $and: [
+              ...commonConditions,
+              { _id: { $in: boardIds } }
+            ]
+          }
+        },
+        {
+          $addFields: {
+            sortOrder: { $indexOfArray: [boardIds, '$_id'] }
+          }
+        },
+        { $sort: { sortOrder: 1 } },
+
+        {
+          $facet: {
+            queryBoards: [
+              { $skip: pagingSkipValue(favouritePage, itemsPerPage) },
+              { $limit: itemsPerPage }
+            ],
+            queryTotalBoards: [{ $count: 'countedAllBoards' }]
+          }
+        }
+      ]).toArray()
+
+      favouriteBoards = favouriteResult[0]?.queryBoards || []
+      totalFavouriteBoards = favouriteResult[0]?.queryTotalBoards?.[0]?.countedAllBoards || 0
+    }
 
     return {
       ownerBoards: ownerResult[0]?.queryBoards || [],
       totalOwnerBoards: ownerResult[0]?.queryTotalBoards?.[0]?.countedAllBoards || 0,
+
       memberBoards: memberResult[0]?.queryBoards || [],
-      totalMemberBoards: memberResult[0]?.queryTotalBoards?.[0]?.countedAllBoards || 0
+      totalMemberBoards: memberResult[0]?.queryTotalBoards?.[0]?.countedAllBoards || 0,
+
+      favouriteBoards,
+      totalFavouriteBoards
     }
   } catch (error) { throw new Error(error) }
 }
