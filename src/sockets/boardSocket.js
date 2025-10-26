@@ -9,6 +9,7 @@ export const boardSocket = (socket) => {
 
   socket.on('FE_DELETE_BOARD', (boardId) => {
     socket.to(boardId).emit('BE_DELETE_BOARD', boardId)
+    socket.broadcast.emit('BE_DELETE_BOARD_GLOBAL', boardId)
   })
 
   socket.on('FE_UPDATE_BOARD', ({ boardId, board }) => {

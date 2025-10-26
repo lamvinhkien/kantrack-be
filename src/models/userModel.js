@@ -3,11 +3,6 @@ import { ObjectId } from 'mongodb'
 import { GET_DB } from '~/config/mongodb'
 import { EMAIL_RULE, EMAIL_RULE_MESSAGE } from '~/utils/validators'
 
-const USER_ROLES = {
-  CLIENT: 'client',
-  ADMIN: 'admin'
-}
-
 const USER_COLLECTION_NAME = 'users'
 const USER_COLLECTION_SCHEMA = Joi.object({
   email: Joi.string().required().pattern(EMAIL_RULE).message(EMAIL_RULE_MESSAGE),
@@ -18,7 +13,6 @@ const USER_COLLECTION_SCHEMA = Joi.object({
     url: Joi.string().required().default(null),
     publicId: Joi.string().required().default(null)
   }).default(null),
-  role: Joi.string().valid(...Object.values(USER_ROLES)).default(USER_ROLES.CLIENT),
   isActive: Joi.boolean().default(false),
   verifyToken: Joi.string(),
   require2fa: Joi.boolean().default(false),
@@ -84,12 +78,28 @@ const update = async (userId, updateData) => {
   } catch (error) { throw new Error(error) }
 }
 
+const updateMany = async (filter, updateData) => {
+  try {
+    const result = await GET_DB().collection(USER_COLLECTION_NAME).updateMany(filter, updateData)
+    return result
+  } catch (error) { throw new Error(error) }
+}
+
+const createUserIndexes = async () => {
+  try {
+    const collection = GET_DB().collection(USER_COLLECTION_NAME)
+    await collection.createIndex({ 'favouriteBoards.boardId': 1 })
+    await collection.createIndex({ 'recentBoards.boardId': 1 })
+  } catch (error) { throw new Error(error) }
+}
+
 export const userModel = {
   USER_COLLECTION_NAME,
   USER_COLLECTION_SCHEMA,
-  USER_ROLES,
   createNew,
   findOneById,
   findOneByEmail,
-  update
+  update,
+  updateMany,
+  createUserIndexes
 }

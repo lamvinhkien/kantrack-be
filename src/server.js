@@ -13,6 +13,7 @@ import http from 'http'
 import { boardSocket } from './sockets/boardSocket'
 import { inviteSocket } from './sockets/inviteSocket'
 import { activeCardSocket } from './sockets/activeCardSocket'
+import { userModel } from '~/models/userModel'
 
 const START_SERVER = () => {
   const app = express()
@@ -55,6 +56,7 @@ const START_SERVER = () => {
   try {
     await CONNECT_DB()
     console.log('Connected to MongoDB Cloud Atlas.')
+    await userModel.createUserIndexes()
     START_SERVER()
   } catch (error) {
     console.error(error)

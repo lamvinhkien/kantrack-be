@@ -6,6 +6,7 @@ import { columnModel } from '~/models/columnModel'
 import { cardModel } from '~/models/cardModel'
 import { DEFAULT_PAGE, DEFAULT_ITEMS_PER_PAGE } from '~/utils/constants'
 import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
+import { userModel } from '~/models/userModel'
 
 const createNew = async (userId, reqBody) => {
   try {
@@ -119,10 +120,11 @@ const moveCardToDifferentColumn = async (reqBody) => {
 
 const getBoards = async (userId, ownerPage, memberPage, favouritePage, itemsPerPage, queryFilters) => {
   try {
+    const isSearching = queryFilters && Object.keys(queryFilters).length > 0
     const safeOwnerPage = Number(ownerPage) || DEFAULT_PAGE
     const safeMemberPage = Number(memberPage) || DEFAULT_PAGE
     const safeFavouritePage = Number(favouritePage) || DEFAULT_PAGE
-    const safeItemsPerPage = Number(itemsPerPage) || DEFAULT_ITEMS_PER_PAGE
+    const safeItemsPerPage = isSearching ? 100 : (Number(itemsPerPage) || DEFAULT_ITEMS_PER_PAGE)
 
     return await boardModel.getBoards(
       userId,
@@ -143,29 +145,45 @@ const deleteItem = async (boardId) => {
     }
 
     const columns = await columnModel.findAllByBoardId(boardId)
+
     for (const column of columns) {
       const cards = await cardModel.findAllByColumnId(column._id)
+
       for (const card of cards) {
+        const deleteTasks = []
+
         if (card.cover?.publicId) {
-          await CloudinaryProvider.deleteFile(card.cover.publicId)
+          deleteTasks.push(CloudinaryProvider.deleteFile(card.cover.publicId))
         }
 
         if (card.attachments?.length) {
-          await Promise.all(
-            card.attachments
-              .filter(att => att.type === 'file' && att.publicId)
-              .map(att => CloudinaryProvider.deleteFile(att.publicId))
-          )
+          const fileAttachments = card.attachments
+            .filter(att => att.type === 'file' && att.publicId)
+          fileAttachments.forEach(att => deleteTasks.push(CloudinaryProvider.deleteFile(att.publicId)))
         }
+
+        if (deleteTasks.length) await Promise.allSettled(deleteTasks)
       }
+
       await cardModel.deleteManyByColumnId(column._id)
     }
 
     await columnModel.deleteManyByBoardId(boardId)
 
+    await Promise.all([
+      userModel.updateMany(
+        { 'favouriteBoards.boardId': boardId },
+        { $pull: { favouriteBoards: { boardId } } }
+      ),
+      userModel.updateMany(
+        { 'recentBoards.boardId': boardId },
+        { $pull: { recentBoards: { boardId } } }
+      )
+    ])
+
     await boardModel.deleteOneById(boardId)
 
-    return { deleteResult: 'Board and all related data have been deleted.' }
+    return { deleteResult: '✅ Board and all related data have been deleted successfully.' }
   } catch (error) { throw error }
 }
 

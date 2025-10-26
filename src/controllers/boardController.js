@@ -38,13 +38,11 @@ const moveCardToDifferentColumn = async (req, res, next) => {
 const getBoards = async (req, res, next) => {
   try {
     const userId = req.jwtDecoded._id
-    const { ownerPage, memberPage, favouritePage, itemsPerPage, ...rest } = req.query
+    const { ownerPage, memberPage, favouritePage, itemsPerPage, ...filters } = req.query
 
-    let queryFilters = {}
-    if (rest.q && typeof rest.q === 'object') {
-      queryFilters = rest.q
-    } else if (typeof rest['q[title]'] === 'string') {
-      queryFilters = { title: rest['q[title]'] }
+    const queryFilters = {}
+    if (filters.title) {
+      queryFilters.title = filters.title
     }
 
     const results = await boardService.getBoards(
