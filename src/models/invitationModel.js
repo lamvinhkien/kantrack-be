@@ -128,11 +128,39 @@ const findByUser = async (userId) => {
   } catch (error) { throw new Error(error) }
 }
 
+const deleteManyByBoardId = async (boardId) => {
+  try {
+    const result = await GET_DB().collection(INVITATION_COLLECTION_NAME)
+      .deleteMany({ 'boardInvitation.boardId': new ObjectId(boardId) })
+    return result
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
+const findPendingByBoardAndInvitee = async (boardId, inviteeId) => {
+  try {
+    const result = await GET_DB()
+      .collection(INVITATION_COLLECTION_NAME)
+      .findOne({
+        'boardInvitation.boardId': new ObjectId(boardId),
+        inviteeId: new ObjectId(inviteeId),
+        'boardInvitation.status': BOARD_INVITATION_STATUS.PENDING,
+        _destroy: false
+      })
+    return result
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
 export const invitationModel = {
   INVITATION_COLLECTION_NAME,
   INVITATION_COLLECTION_SCHEMA,
   createNewBoardInvitation,
   findOneById,
   update,
-  findByUser
+  findByUser,
+  deleteManyByBoardId,
+  findPendingByBoardAndInvitee
 }

@@ -7,6 +7,7 @@ import { cardModel } from '~/models/cardModel'
 import { DEFAULT_PAGE, DEFAULT_ITEMS_PER_PAGE } from '~/utils/constants'
 import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
 import { userModel } from '~/models/userModel'
+import { invitationModel } from '~/models/invitationModel'
 
 const createNew = async (userId, reqBody) => {
   try {
@@ -170,6 +171,8 @@ const deleteItem = async (boardId) => {
 
     await columnModel.deleteManyByBoardId(boardId)
 
+    await invitationModel.deleteManyByBoardId(boardId)
+
     await Promise.all([
       userModel.updateMany(
         { 'favouriteBoards.boardId': boardId },
@@ -183,7 +186,7 @@ const deleteItem = async (boardId) => {
 
     await boardModel.deleteOneById(boardId)
 
-    return { deleteResult: '✅ Board and all related data have been deleted successfully.' }
+    return { deleteResult: 'Board and all related data have been deleted successfully.' }
   } catch (error) { throw error }
 }
 

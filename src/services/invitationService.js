@@ -14,10 +14,23 @@ const createNewBoardInvitation = async (reqBody, inviterId) => {
     const boardOwnerAndMemberIds = [...board.ownerIds, ...board.memberIds].toString()
 
     if (!invitee) throw new ApiError(StatusCodes.NOT_FOUND, 'Invitee not found!')
-    if (boardOwnerAndMemberIds.includes(invitee._id)) {
-      throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Invitee are already a member of this board.')
-    }
     if (!inviter || !board) throw new ApiError(StatusCodes.NOT_FOUND, 'Inviter or Board not found!')
+
+    if (boardOwnerAndMemberIds.includes(invitee._id.toString())) {
+      throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Invitee is already a member of this board.')
+    }
+
+    const existingPendingInvitation = await invitationModel.findPendingByBoardAndInvitee(
+      reqBody.boardId,
+      invitee._id
+    )
+
+    if (existingPendingInvitation) {
+      throw new ApiError(
+        StatusCodes.CONFLICT,
+        'This user already has a pending invitation to this board.'
+      )
+    }
 
     const newInvitationData = {
       inviterId,
@@ -28,6 +41,7 @@ const createNewBoardInvitation = async (reqBody, inviterId) => {
         status: BOARD_INVITATION_STATUS.PENDING
       }
     }
+
     const createdInvitation = await invitationModel.createNewBoardInvitation(newInvitationData)
     const getInvitation = await invitationModel.findOneById(createdInvitation.insertedId)
 
@@ -37,7 +51,9 @@ const createNewBoardInvitation = async (reqBody, inviterId) => {
       inviter: pickUser(inviter),
       invitee: pickUser(invitee)
     }
-  } catch (error) { throw error }
+  } catch (error) {
+    throw error
+  }
 }
 
 const getInvitations = async (userId) => {
