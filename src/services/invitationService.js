@@ -14,7 +14,7 @@ const createNewBoardInvitation = async (reqBody, inviterId) => {
     const boardOwnerAndMemberIds = [...board.ownerIds, ...board.memberIds].toString()
 
     if (!invitee) throw new ApiError(StatusCodes.NOT_FOUND, 'Invitee not found!')
-    if (!inviter || !board) throw new ApiError(StatusCodes.NOT_FOUND, 'Inviter or Board not found!')
+    if (!inviter || !board) throw new ApiError(StatusCodes.NOT_FOUND, 'Inviter or Board not found.')
 
     if (boardOwnerAndMemberIds.includes(invitee._id.toString())) {
       throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Invitee is already a member of this board.')
@@ -75,7 +75,7 @@ const updateBoardInvitation = async (userId, invitationId, status) => {
 
     const boardId = getInvitation.boardInvitation.boardId
     const getBoard = await boardModel.findOneById(boardId)
-    if (!getBoard) throw new ApiError(StatusCodes.NOT_FOUND, 'Board not found!')
+    if (!getBoard) throw new ApiError(StatusCodes.NOT_FOUND, 'Board not found.')
 
     const boardOwnerAndMemberIds = [...getBoard.ownerIds, ...getBoard.memberIds].toString()
     if (boardOwnerAndMemberIds.includes(userId)) {
