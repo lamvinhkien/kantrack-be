@@ -13,7 +13,7 @@ const createNewBoardInvitation = async (reqBody, inviterId) => {
     const board = await boardModel.findOneById(reqBody.boardId)
     const boardOwnerAndMemberIds = [...board.ownerIds, ...board.memberIds].toString()
 
-    if (!invitee) throw new ApiError(StatusCodes.NOT_FOUND, 'Invitee not found!')
+    if (!invitee) throw new ApiError(StatusCodes.NOT_FOUND, 'Invitee not found.')
     if (!inviter || !board) throw new ApiError(StatusCodes.NOT_FOUND, 'Inviter or Board not found.')
 
     if (boardOwnerAndMemberIds.includes(invitee._id.toString())) {
@@ -71,7 +71,7 @@ const getInvitations = async (userId) => {
 const updateBoardInvitation = async (userId, invitationId, status) => {
   try {
     const getInvitation = await invitationModel.findOneById(invitationId)
-    if (!getInvitation) throw new ApiError(StatusCodes.NOT_FOUND, 'Invitation not found!')
+    if (!getInvitation) throw new ApiError(StatusCodes.NOT_FOUND, 'Invitation not found.')
 
     const boardId = getInvitation.boardInvitation.boardId
     const getBoard = await boardModel.findOneById(boardId)

@@ -34,23 +34,21 @@ const createNew = async (reqBody) => {
     const getNewUser = await userModel.findOneById(createdUser.insertedId)
 
     const verificationLink = `${WEBSITE_DOMAIN}/account/verification?email=${getNewUser.email}&token=${getNewUser.verifyToken}`
-    console.log('🚀 ~ verificationLink: ', verificationLink)
+    const to = getNewUser.email
+    const toName = getNewUser.username
+    const subject = 'Account created.'
+    const templateId = MAILER_SEND_TEMPLATES_IDS.REGISTER_ACCOUNT
+    const personalizetionData = [
+      {
+        email: to,
+        data: {
+          support_email: env.MAILER_SEND_SUPPORT_EMAIL,
+          verification_link: verificationLink
+        }
+      }
+    ]
 
-    // const to = getNewUser.email
-    // const toName = getNewUser.username
-    // const subject = 'Account created.'
-    // const templateId = MAILER_SEND_TEMPLATES_IDS.REGISTER_ACCOUNT
-    // const personalizetionData = [
-    //   {
-    //     email: to,
-    //     data: {
-    //       support_email: env.MAILER_SEND_SUPPORT_EMAIL,
-    //       verification_link: verificationLink
-    //     }
-    //   }
-    // ]
-
-    // await MailerSendProvider.sendEmail({ to, toName, subject, templateId, personalizetionData })
+    await MailerSendProvider.sendEmail({ to, toName, subject, templateId, personalizetionData })
 
     return pickUser(getNewUser)
   } catch (error) { throw error }
@@ -137,7 +135,7 @@ const update = async (userId, reqBody, userAvatarFile, deviceId) => {
     if (!existUser)
       throw new ApiError(StatusCodes.NOT_FOUND, 'Account not found.')
     if (!existUser.isActive)
-      throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is not active.')
+      throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is not active, please verify email.')
 
     const updateData = {}
 
@@ -246,7 +244,7 @@ const setup2FA = async (userId, otpToken, action2FA, deviceId) => {
 
     const existUser = await userModel.findOneById(userId)
     if (!existUser) throw new ApiError(StatusCodes.NOT_FOUND, 'Account not found.')
-    if (!existUser.isActive) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is not active.')
+    if (!existUser.isActive) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is not active, please verify email.')
     if (!existUser.secretKey2fa) throw new ApiError(StatusCodes.NOT_FOUND, '2FA key not found.')
 
     const isValid = authenticator.verify({
@@ -271,7 +269,7 @@ const verify2FA = async (email, otpToken, deviceId) => {
 
     const existUser = await userModel.findOneByEmail(email)
     if (!existUser) throw new ApiError(StatusCodes.NOT_FOUND, 'Account not found.')
-    if (!existUser.isActive) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is not active.')
+    if (!existUser.isActive) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is not active, please verify email.')
     if (!existUser.secretKey2fa) throw new ApiError(StatusCodes.NOT_FOUND, '2FA key not found.')
 
     const isValid = authenticator.verify({
