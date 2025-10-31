@@ -14,9 +14,8 @@ const getDetails = async (req, res, next) => {
   try {
     const boardId = req.params.id
     const userId = req.jwtDecoded._id
-    const deviceId = req.cookies.deviceId || null
     const board = await boardService.getDetails(boardId)
-    await userService.update(userId, { recentAction: true, boardId }, null, deviceId)
+    await userService.update(userId, { recentAction: true, boardId }, null)
     res.status(StatusCodes.OK).json(board)
   } catch (error) { next(error) }
 }

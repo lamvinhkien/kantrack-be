@@ -8,7 +8,6 @@ export const pickUser = (user) => {
     'username',
     'displayName',
     'avatar',
-    'role',
     'isActive',
     'require2fa',
     'recentBoards',

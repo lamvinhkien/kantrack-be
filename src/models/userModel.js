@@ -16,7 +16,11 @@ const USER_COLLECTION_SCHEMA = Joi.object({
   isActive: Joi.boolean().default(false),
   verifyToken: Joi.string(),
   require2fa: Joi.boolean().default(false),
-  secretKey2fa: Joi.string().default(null),
+  otp: Joi.object({
+    value: Joi.string().allow(null),
+    expiresAt: Joi.date().timestamp('javascript').default(null),
+    resendExpiresAt: Joi.date().timestamp('javascript').default(null)
+  }),
   recentBoards: Joi.array().items(Joi.object({
     boardId: Joi.string().required(),
     viewedAt: Joi.date().timestamp('javascript').default(Date.now)

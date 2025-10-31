@@ -24,14 +24,8 @@ Router.route('/refresh_token')
 Router.route('/update')
   .put(authMiddleware.isAuthorized, multerUploadMiddleware.upload.single('userAvatar'), userValidation.update, userController.update)
 
-Router.route('/get_2fa_qr_code')
-  .get(authMiddleware.isAuthorized, userController.get2FA_QRCode)
-
-Router.route('/setup_2fa')
-  .post(authMiddleware.isAuthorized, userController.setup2FA)
-
 Router.route('/verify_2fa')
-  .put(userController.verify2FA)
+  .post(userController.verify2FA)
 
 Router.route('/recent_boards')
   .get(authMiddleware.isAuthorized, userController.getRecentBoards)
