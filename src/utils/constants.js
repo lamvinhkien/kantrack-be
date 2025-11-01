@@ -5,7 +5,12 @@ export const WHITELIST_DOMAINS = [env.WEBSITE_DOMAIN_DEV]
 
 export const BOARD_TYPES = { PUBLIC: 'public', PRIVATE: 'private' }
 
-export const MAILER_SEND_TEMPLATES_IDS = { REGISTER_ACCOUNT: 'z3m5jgry3704dpyo' }
+export const MAILER_SEND_TEMPLATES_IDS = {
+  REGISTER_ACCOUNT: 'z3m5jgry3704dpyo',
+  OTP_CODE: 'neqvygmeqrw40p7w'
+}
+
+export const CRON_REMINDER_TIME = env.BUILD_MODE === 'production' ? env.CRON_REMINDER_TIME_PROD : env.CRON_REMINDER_TIME_DEV
 
 export const DEFAULT_PAGE = 1
 export const DEFAULT_ITEMS_PER_PAGE = 6

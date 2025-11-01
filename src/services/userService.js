@@ -31,22 +31,22 @@ const createNew = async (reqBody) => {
     const createdUser = await userModel.createNew(newUser)
     const getNewUser = await userModel.findOneById(createdUser.insertedId)
 
-    const verificationLink = `${WEBSITE_DOMAIN}/account/verification?email=${getNewUser.email}&token=${getNewUser.verifyToken}`
-    const to = getNewUser.email
-    const toName = getNewUser.username
-    const subject = 'Account created.'
-    const templateId = MAILER_SEND_TEMPLATES_IDS.REGISTER_ACCOUNT
-    const personalizationData = [
-      {
-        email: to,
-        data: {
-          support_email: env.MAILER_SEND_SUPPORT_EMAIL,
-          verification_link: verificationLink
-        }
-      }
-    ]
-
     try {
+      const verificationLink = `${WEBSITE_DOMAIN}/account/verification?email=${getNewUser.email}&token=${getNewUser.verifyToken}`
+      const to = getNewUser.email
+      const toName = getNewUser.username
+      const subject = 'Account created.'
+      const templateId = MAILER_SEND_TEMPLATES_IDS.REGISTER_ACCOUNT
+      const personalizationData = [
+        {
+          email: to,
+          data: {
+            support_email: env.MAILER_SEND_SUPPORT_EMAIL,
+            verification_link: verificationLink
+          }
+        }
+      ]
+
       await MailerSendProvider.sendEmail({ to, toName, subject, templateId, personalizationData })
     } catch (error) {
       throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Failed to send verification email.')
@@ -91,26 +91,25 @@ const login = async (reqBody) => {
       const expiresAt = now + ms(`${env.OTP_EXPIRE_MINUTES}m`)
       const resendExpiresAt = now + ms(`${env.OTP_RESEND_EXPIRES}m`)
 
-      await userModel.update(existUser._id, {
-        otp: { value: otpValue, expiresAt, resendExpiresAt }
-      })
+      await userModel.update(existUser._id, { otp: { value: otpValue, expiresAt, resendExpiresAt } })
 
       try {
-        await MailerSendProvider.sendEmail({
-          to: existUser.email,
-          toName: existUser.displayName,
-          subject: 'Your OTP Verification Code',
-          html: `
-        <div style="font-family: Arial, sans-serif; padding: 16px;">
-          <h2>Xin chào ${existUser.displayName},</h2>
-          <p>Mã OTP của bạn là:</p>
-          <h1 style="color: #2563eb;">${otpValue}</h1>
-          <p>Mã này sẽ hết hạn sau <b>${env.OTP_EXPIRE_MINUTES} phút</b>.</p>
-          <br/>
-          <p>Trân trọng,<br/>Đội ngũ ${env.ADMIN_SENDER_NAME}</p>
-        </div>
-      `
-        })
+        const to = existUser.email
+        const toName = existUser.username
+        const subject = 'OTP Code.'
+        const templateId = MAILER_SEND_TEMPLATES_IDS.OTP_CODE
+        const personalizationData = [
+          {
+            email: to,
+            data: {
+              support_email: env.MAILER_SEND_SUPPORT_EMAIL,
+              otp_expires: env.OTP_EXPIRE_MINUTES,
+              otp_code: otpValue
+            }
+          }
+        ]
+
+        await MailerSendProvider.sendEmail({ to, toName, subject, templateId, personalizationData })
       } catch (error) {
         throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Failed to send verification email.')
       }

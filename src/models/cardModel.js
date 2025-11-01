@@ -85,6 +85,12 @@ const createNew = async (data) => {
   } catch (error) { throw new Error(error) }
 }
 
+const findAll = async (condition) => {
+  try {
+    return await GET_DB().collection(CARD_COLLECTION_NAME).find(condition).toArray()
+  } catch (error) { throw new Error(error) }
+}
+
 const findOneById = async (id) => {
   try {
     return await GET_DB().collection(CARD_COLLECTION_NAME).findOne({ _id: new ObjectId(id) })
@@ -175,6 +181,7 @@ export const cardModel = {
   CARD_COLLECTION_NAME,
   CARD_COLLECTION_SCHEMA,
   createNew,
+  findAll,
   findOneById,
   findAllByColumnId,
   update,

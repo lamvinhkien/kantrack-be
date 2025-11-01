@@ -14,6 +14,7 @@ import { boardSocket } from './sockets/boardSocket'
 import { inviteSocket } from './sockets/inviteSocket'
 import { activeCardSocket } from './sockets/activeCardSocket'
 import { userModel } from '~/models/userModel'
+import '~/jobs/reminderJob'
 
 const START_SERVER = () => {
   const app = express()
