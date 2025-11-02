@@ -177,20 +177,29 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
       const parsedStart = startDate ? moment(startDate).toDate() : null
       const parsedDue = dueDate ? moment(dueDate).toDate() : null
 
-      const dueDateTime = dueDate && dueTime
-        ? moment(`${moment(dueDate).format('YYYY-MM-DD')} ${dueTime}`, 'YYYY-MM-DD HH:mm')
-        : moment(dueDate)
+      const cleanDueTime = dueTime
+        ? moment(dueTime, 'HH:mm').minutes(0).seconds(0).format('HH:mm')
+        : null
+
+      const dueDateTime = parsedDue && cleanDueTime
+        ? moment(`${moment(parsedDue).format('YYYY-MM-DD')} ${cleanDueTime}`, 'YYYY-MM-DD HH:mm')
+        : moment(parsedDue)
+
+      const allowedTimeBefore = [0, 60, 120, 1440, 2880]
+      const timeBefore = reminder?.timeBefore ?? 0
+      if (reminder?.enabled && !allowedTimeBefore.includes(timeBefore)) {
+        throw new Error(`Invalid reminder timeBefore value: ${timeBefore}`)
+      }
 
       let scheduledAt = null
-
       if (reminder?.enabled && parsedDue) {
         if (reminder?.scheduledAt) {
           scheduledAt = moment(reminder.scheduledAt).toDate()
-        } else if (reminder.timeBefore === 0) {
+        } else if (timeBefore === 0) {
           scheduledAt = dueDateTime.toDate()
         } else {
           scheduledAt = moment(dueDateTime)
-            .subtract(reminder.timeBefore || 0, 'minutes')
+            .subtract(timeBefore, 'minutes')
             .toDate()
         }
       }
@@ -198,10 +207,10 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
       const newDates = {
         startDate: parsedStart,
         dueDate: parsedDue,
-        dueTime: dueTime || null,
+        dueTime: cleanDueTime,
         reminder: {
           enabled: !!reminder?.enabled,
-          timeBefore: reminder?.timeBefore || 0,
+          timeBefore,
           type: reminder?.type || 'email',
           scheduledAt,
           sent: !!reminder?.sent
