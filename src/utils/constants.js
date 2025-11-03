@@ -7,10 +7,21 @@ export const BOARD_TYPES = { PUBLIC: 'public', PRIVATE: 'private' }
 
 export const MAILER_SEND_TEMPLATES_IDS = {
   REGISTER_ACCOUNT: 'z3m5jgry3704dpyo',
-  OTP_CODE: 'neqvygmeqrw40p7w'
+  OTP_CODE: 'neqvygmeqrw40p7w',
+  TASK_REMINDER: 'zr6ke4njdeygon12'
 }
 
-export const CRON_REMINDER_TIME = env.BUILD_MODE === 'production' ? env.CRON_REMINDER_TIME_PROD : env.CRON_REMINDER_TIME_DEV
+export const MAILER_SEND_SUPPORT_EMAIL = 'lamvinhkien1709@gmail.com'
+export const ADMIN_SENDER_EMAIL = 'noreply@kantrack.io.vn'
+export const ADMIN_SENDER_NAME = 'KanTrack'
+
+export const OTP_EXPIRE_MINUTES = 2
+export const OTP_RESEND_EXPIRES = 1
+
+export const MAX_REMINDERS_PER_BOARD = 3
+export const MAX_JOINED_BOARDS = 12
+
+export const CRON_REMINDER_TIME = env.BUILD_MODE === 'production' ? '0 * * * *' : '* * * * *'
 
 export const DEFAULT_PAGE = 1
 export const DEFAULT_ITEMS_PER_PAGE = 6

@@ -22,8 +22,8 @@ const login = async (req, res, next) => {
     const result = await userService.login(req.body)
 
     if (result.accessToken && result.refreshToken) {
-      res.cookie('accessToken', result.accessToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('7 days') })
-      res.cookie('refreshToken', result.refreshToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('14 days') })
+      res.cookie('accessToken', result.accessToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('1 hour') })
+      res.cookie('refreshToken', result.refreshToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('7 days') })
     }
 
     res.status(StatusCodes.OK).json(result)
@@ -43,7 +43,7 @@ const refreshToken = async (req, res, next) => {
   try {
     const result = await userService.refreshToken(req.cookies?.refreshToken)
 
-    res.cookie('accessToken', result.accessToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('7 days') })
+    res.cookie('accessToken', result.accessToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('1 hour') })
 
     res.status(StatusCodes.OK).json(result)
   } catch (error) {
@@ -70,8 +70,8 @@ const verify2FA = async (req, res, next) => {
     const result = await userService.verify2FA(email, otpToken)
 
     if (result.accessToken && result.refreshToken) {
-      res.cookie('accessToken', result.accessToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('7 days') })
-      res.cookie('refreshToken', result.refreshToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('14 days') })
+      res.cookie('accessToken', result.accessToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('1 hour') })
+      res.cookie('refreshToken', result.refreshToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: ms('7 days') })
     }
 
     res.status(StatusCodes.OK).json(result)

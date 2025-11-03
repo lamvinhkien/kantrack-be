@@ -1,8 +1,9 @@
 import { env } from '~/config/environment'
+import { ADMIN_SENDER_EMAIL, ADMIN_SENDER_NAME } from '~/utils/constants'
 import { MailerSend, EmailParams, Sender, Recipient } from 'mailersend'
 
 const mailerSendInstance = new MailerSend({ apiKey: env.MAILER_SEND_API_KEY })
-const sendFrom = new Sender(env.ADMIN_SENDER_EMAIL, env.ADMIN_SENDER_NAME)
+const sendFrom = new Sender(ADMIN_SENDER_EMAIL, ADMIN_SENDER_NAME)
 
 const sendEmail = async ({
   to,

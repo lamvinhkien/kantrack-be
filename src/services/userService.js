@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { pickUser } from '~/utils/formatters'
 import { WEBSITE_DOMAIN } from '~/utils/constants'
 import { MailerSendProvider } from '~/providers/MailerSendProvider'
-import { MAILER_SEND_TEMPLATES_IDS } from '~/utils/constants'
+import { MAILER_SEND_TEMPLATES_IDS, OTP_EXPIRE_MINUTES, OTP_RESEND_EXPIRES, MAILER_SEND_SUPPORT_EMAIL } from '~/utils/constants'
 import { env } from '~/config/environment'
 import { JwtProvider } from '~/providers/JwtProvider'
 import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
@@ -41,7 +41,7 @@ const createNew = async (reqBody) => {
         {
           email: to,
           data: {
-            support_email: env.MAILER_SEND_SUPPORT_EMAIL,
+            support_email: MAILER_SEND_SUPPORT_EMAIL,
             verification_link: verificationLink
           }
         }
@@ -49,7 +49,7 @@ const createNew = async (reqBody) => {
 
       await MailerSendProvider.sendEmail({ to, toName, subject, templateId, personalizationData })
     } catch (error) {
-      throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Failed to send verification email.')
+      throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Something went wrong while sending your verification email. Please try again.')
     }
 
     return pickUser(getNewUser)
@@ -88,8 +88,8 @@ const login = async (reqBody) => {
       }
 
       const otpValue = crypto.randomInt(100000, 999999).toString()
-      const expiresAt = now + ms(`${env.OTP_EXPIRE_MINUTES}m`)
-      const resendExpiresAt = now + ms(`${env.OTP_RESEND_EXPIRES}m`)
+      const expiresAt = now + ms(`${OTP_EXPIRE_MINUTES}m`)
+      const resendExpiresAt = now + ms(`${OTP_RESEND_EXPIRES}m`)
 
       await userModel.update(existUser._id, { otp: { value: otpValue, expiresAt, resendExpiresAt } })
 
@@ -102,8 +102,8 @@ const login = async (reqBody) => {
           {
             email: to,
             data: {
-              support_email: env.MAILER_SEND_SUPPORT_EMAIL,
-              otp_expires: env.OTP_EXPIRE_MINUTES,
+              support_email: MAILER_SEND_SUPPORT_EMAIL,
+              otp_expires: OTP_EXPIRE_MINUTES,
               otp_code: otpValue
             }
           }
@@ -111,7 +111,7 @@ const login = async (reqBody) => {
 
         await MailerSendProvider.sendEmail({ to, toName, subject, templateId, personalizationData })
       } catch (error) {
-        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Failed to send verification email.')
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Something went wrong while sending your verification email. Please try again.')
       }
 
       return { email: existUser.email, password: reqBody.password, require2fa: existUser.require2fa }

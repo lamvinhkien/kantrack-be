@@ -2,7 +2,14 @@
 import { cardModel } from '~/models/cardModel'
 import { columnModel } from '~/models/columnModel'
 import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
-import { CARD_ATTACHMENT_ACTIONS, CARD_COMMENT_ACTIONS } from '~/utils/constants'
+import {
+  CARD_ATTACHMENT_ACTIONS,
+  CARD_COMMENT_ACTIONS,
+  WEBSITE_DOMAIN,
+  MAILER_SEND_TEMPLATES_IDS,
+  MAILER_SEND_SUPPORT_EMAIL,
+  MAX_REMINDERS_PER_BOARD
+} from '~/utils/constants'
 import { v4 as uuidv4 } from 'uuid'
 import { normalizeFileName } from '~/utils/formatters'
 import ApiError from '~/utils/ApiError'
@@ -10,6 +17,7 @@ import { StatusCodes } from 'http-status-codes'
 import moment from 'moment'
 import { MailerSendProvider } from '~/providers/MailerSendProvider'
 import { userModel } from '~/models/userModel'
+import { boardModel } from '~/models/boardModel'
 
 const createNew = async (reqBody) => {
   try {
@@ -185,6 +193,10 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
         ? moment(`${moment(parsedDue).format('YYYY-MM-DD')} ${cleanDueTime}`, 'YYYY-MM-DD HH:mm')
         : moment(parsedDue)
 
+      if (parsedStart && parsedDue && moment(parsedStart).isAfter(moment(parsedDue))) {
+        throw new Error('Start date cannot be after due date.')
+      }
+
       const allowedTimeBefore = [0, 60, 120, 1440, 2880]
       const timeBefore = reminder?.timeBefore ?? 0
       if (reminder?.enabled && !allowedTimeBefore.includes(timeBefore)) {
@@ -192,6 +204,11 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
       }
 
       let scheduledAt = null
+
+      if (reminder?.enabled && !parsedDue) {
+        throw new Error('Cannot enable reminder without a due date.')
+      }
+
       if (reminder?.enabled && parsedDue) {
         if (reminder?.scheduledAt) {
           scheduledAt = moment(reminder.scheduledAt).toDate()
@@ -201,6 +218,18 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
           scheduledAt = moment(dueDateTime)
             .subtract(timeBefore, 'minutes')
             .toDate()
+        }
+
+        if (moment(scheduledAt).isBefore(moment().subtract(30, 'seconds'))) {
+          throw new Error('Reminder schedule time cannot be in the past.')
+        }
+      }
+
+      if (reminder?.enabled) {
+        const activeRemindersOnBoard = await cardModel.countActiveRemindersByBoard(currentCard?.boardId.toString())
+        const isCurrentlyReminderOff = !currentCard.dates?.reminder?.enabled
+        if (isCurrentlyReminderOff && activeRemindersOnBoard >= MAX_REMINDERS_PER_BOARD) {
+          throw new Error('This board has reached its email reminder limit.')
         }
       }
 
@@ -213,7 +242,7 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
           timeBefore,
           type: reminder?.type || 'email',
           scheduledAt,
-          sent: !!reminder?.sent
+          sent: reminder?.enabled ? false : !!reminder?.sent
         }
       }
 
@@ -256,9 +285,8 @@ const deleteItem = async (cardId) => {
   } catch (error) { throw error }
 }
 
-const formatLogTime = () => moment().format('HH:mm:ss DD/MM/YYYY')
-
 const sendDueReminderMail = async () => {
+  const formatLogTime = () => moment().format('HH:mm:ss DD/MM/YYYY')
   const now = moment().toDate()
   console.log(`[ReminderJob] (${formatLogTime()}) Started job...`)
 
@@ -277,58 +305,57 @@ const sendDueReminderMail = async () => {
   for (const card of cards) {
     try {
       const memberIds = card.memberIds || []
-
       if (!memberIds.length) {
         console.log(`[ReminderJob] (${formatLogTime()}) Card "${card.title}" has no members → marking as sent.`)
-        card.dates.reminder.sent = true
-        await cardModel.update(card._id, { dates: card.dates })
+        await cardModel.update(card._id, { 'dates.reminder.sent': true })
         continue
       }
 
       const members = await Promise.all(
         memberIds.map(async id => {
-          try {
-            const user = await userModel.findOneById(id.toString())
-            if (user && user.email) {
-              return { email: user.email, name: user.displayName || user.username || 'User' }
-            }
-            return null
-          } catch {
-            return null
-          }
+          const user = await userModel.findOneById(id.toString())
+          return user?.email ? { email: user.email, name: user.displayName || user.username || 'User' } : null
         })
       )
 
       const validRecipients = members.filter(Boolean)
       if (!validRecipients.length) {
         console.log(`[ReminderJob] (${formatLogTime()}) Card "${card.title}" has no valid recipients → marking as sent.`)
-        card.dates.reminder.sent = true
-        await cardModel.update(card._id, { dates: card.dates })
+        await cardModel.update(card._id, { 'dates.reminder.sent': true })
         continue
       }
 
-      const subject = `Reminder: ${card.title}`
+      const board = await boardModel.findOneById(card.boardId.toString())
+      const boardUrl = board?._id ? `${WEBSITE_DOMAIN}/boards/${board._id}` : WEBSITE_DOMAIN
       const formattedDueDate = moment(card.dates.dueDate).format('DD/MM/YYYY')
-      const formattedDueTime = card.dates.dueTime ? ` ${card.dates.dueTime}` : ''
+      const formattedDueTime = card.dates.dueTime
+      const subject = `Reminder: ${card.title}`
 
-      const html = `
-        <p>Hello ${validRecipients.length > 1 ? 'team' : validRecipients[0].name},</p>
-        <p>This is a reminder that the task <b>${card.title}</b> is due on 
-        <b>${formattedDueDate}${formattedDueTime}</b>.</p>
-        <p>Please make sure to complete it before the deadline.</p>
-        <p>— Task Management System</p>
-      `
+      const personalizationData = validRecipients.map(r => ({
+        email: r.email,
+        data: {
+          support_email: MAILER_SEND_SUPPORT_EMAIL,
+          board_title: board?.title,
+          board_url: boardUrl,
+          card_title: card?.title,
+          due_date: formattedDueDate,
+          due_time: formattedDueTime,
+          recipient: r.name
+        }
+      }))
 
       await MailerSendProvider.sendBulkEmail({
         recipients: validRecipients,
         subject,
-        html
+        templateId: MAILER_SEND_TEMPLATES_IDS.TASK_REMINDER,
+        personalizationData
       })
 
       console.log(`[ReminderJob] (${formatLogTime()}) Successfully sent reminder for "${card.title}" to ${validRecipients.length} recipient(s).`)
 
-      card.dates.reminder.sent = true
-      await cardModel.update(card._id, { dates: card.dates })
+      await cardModel.update(card._id, { 'dates.reminder.sent': true })
+
+      await new Promise(r => setTimeout(r, 500))
     } catch (err) {
       const message = err?.body?.message || err?.message || JSON.stringify(err)
       console.error(`[ReminderJob] (${formatLogTime()}) Failed to send reminder for "${card.title}":`, message)

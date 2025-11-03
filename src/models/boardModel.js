@@ -7,7 +7,7 @@ import { columnModel } from './columnModel'
 import { cardModel } from './cardModel'
 import { userModel } from './userModel'
 import { pagingSkipValue } from '~/utils/algorithms'
-import { DEFAULT_PAGE, DEFAULT_ITEMS_PER_PAGE } from '~/utils/constants'
+import { DEFAULT_PAGE, DEFAULT_ITEMS_PER_PAGE, MAX_JOINED_BOARDS } from '~/utils/constants'
 
 const BOARD_COLLECTION_NAME = 'boards'
 const BOARD_COLLECTION_SCHEMA = Joi.object({
@@ -20,12 +20,10 @@ const BOARD_COLLECTION_SCHEMA = Joi.object({
     editBoardTitle: Joi.boolean().default(false),
     editBoardType: Joi.boolean().default(false),
     inviteMemberToBoard: Joi.boolean().default(false),
-
     addColumn: Joi.boolean().default(true),
     editColumnTitle: Joi.boolean().default(true),
     moveColumn: Joi.boolean().default(true),
     deleteColumn: Joi.boolean().default(true),
-
     addCard: Joi.boolean().default(true),
     editCardTitle: Joi.boolean().default(true),
     editCardDescription: Joi.boolean().default(true),
@@ -41,12 +39,10 @@ const BOARD_COLLECTION_SCHEMA = Joi.object({
     editBoardTitle: false,
     editBoardType: false,
     inviteMemberToBoard: false,
-
     addColumn: true,
     editColumnTitle: true,
     moveColumn: true,
     deleteColumn: true,
-
     addCard: true,
     editCardTitle: true,
     editCardDescription: true,
@@ -70,8 +66,25 @@ const validateBeforeCreate = async (data) => {
   return await BOARD_COLLECTION_SCHEMA.validateAsync(data, { abortEarly: false })
 }
 
+const countBoardsByUser = async (userId) => {
+  try {
+    return await GET_DB().collection(BOARD_COLLECTION_NAME).countDocuments({
+      $or: [
+        { ownerIds: new ObjectId(userId) },
+        { memberIds: new ObjectId(userId) }
+      ],
+      _destroy: false
+    })
+  } catch (error) { throw new Error(error) }
+}
+
 const createNew = async (userId, data) => {
   try {
+    const joinedBoards = await boardModel.countBoardsByUser(userId)
+    if (joinedBoards >= MAX_JOINED_BOARDS) {
+      throw 'You’ve joined or created more boards than allowed.'
+    }
+
     const validData = await validateBeforeCreate(data)
     const newBoardToAdd = {
       ...validData,
@@ -296,6 +309,11 @@ const getBoards = async (
 
 const pushMemberIds = async (boardId, userId) => {
   try {
+    const joinedBoards = await countBoardsByUser(userId)
+    if (joinedBoards >= MAX_JOINED_BOARDS) {
+      throw 'You’ve joined or created more boards than allowed.'
+    }
+
     return await GET_DB().collection(BOARD_COLLECTION_NAME).findOneAndUpdate(
       { _id: new ObjectId(boardId) },
       { $push: { memberIds: new ObjectId(userId) } },
@@ -374,6 +392,7 @@ const deleteOneById = async (id) => {
 export const boardModel = {
   BOARD_COLLECTION_NAME,
   BOARD_COLLECTION_SCHEMA,
+  countBoardsByUser,
   createNew,
   findOneById,
   getDetails,
