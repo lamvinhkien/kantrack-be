@@ -15,7 +15,7 @@ export const MAILER_SEND_SUPPORT_EMAIL = 'lamvinhkien1709@gmail.com'
 export const ADMIN_SENDER_EMAIL = 'noreply@kantrack.io.vn'
 export const ADMIN_SENDER_NAME = 'KanTrack'
 
-export const OTP_EXPIRE_MINUTES = 2
+export const OTP_EXPIRE_MINUTES = 3
 export const OTP_RESEND_EXPIRES = 1
 
 export const MAX_REMINDERS_PER_BOARD = 3

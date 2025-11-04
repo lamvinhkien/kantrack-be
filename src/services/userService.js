@@ -20,22 +20,25 @@ const createNew = async (reqBody) => {
     if (existUser) throw new ApiError(StatusCodes.CONFLICT, 'Email already exist.')
 
     const nameFromEmail = reqBody.email.split('@')[0]
+    const now = Date.now()
+    const expiresAt = now + ms(`${OTP_EXPIRE_MINUTES}m`)
+    const resendExpiresAt = now + ms(`${OTP_RESEND_EXPIRES}m`)
     const newUser = {
       email: reqBody.email,
       password: bcryptjs.hashSync(reqBody.password, 8),
       username: nameFromEmail,
       displayName: nameFromEmail,
-      verifyToken: uuidv4()
+      verifyToken: { value: uuidv4(), expiresAt, resendExpiresAt }
     }
 
     const createdUser = await userModel.createNew(newUser)
     const getNewUser = await userModel.findOneById(createdUser.insertedId)
 
     try {
-      const verificationLink = `${WEBSITE_DOMAIN}/account/verification?email=${getNewUser.email}&token=${getNewUser.verifyToken}`
+      const verificationLink = `${WEBSITE_DOMAIN}/account/verification?email=${getNewUser.email}&token=${getNewUser.verifyToken?.value}`
       const to = getNewUser.email
       const toName = getNewUser.username
-      const subject = 'Account created.'
+      const subject = 'Verify Email.'
       const templateId = MAILER_SEND_TEMPLATES_IDS.REGISTER_ACCOUNT
       const personalizationData = [
         {
@@ -52,7 +55,7 @@ const createNew = async (reqBody) => {
       throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Something went wrong while sending your verification email. Please try again.')
     }
 
-    return pickUser(getNewUser)
+    return { email: getNewUser.email, password: reqBody.password, isActive: getNewUser.isActive }
   } catch (error) { throw error }
 }
 
@@ -62,14 +65,24 @@ const verifyAccount = async (reqBody) => {
 
     if (!existUser) throw new ApiError(StatusCodes.NOT_FOUND, 'Account not found.')
     if (existUser.isActive) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is already active.')
-    if (reqBody.token !== existUser.verifyToken) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Token is invalid.')
 
-    const updateData = {
-      isActive: true,
-      verifyToken: null
+    if (!existUser.verifyToken || !existUser.verifyToken.value) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'No token found. Please request again.')
     }
 
-    return pickUser(await userModel.update(existUser._id, updateData))
+    const now = Date.now()
+    if (now > existUser.verifyToken.expiresAt) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Token expired. Please request a new one.')
+    }
+
+    if (reqBody.token !== existUser.verifyToken?.value) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Token is invalid.')
+
+    await userModel.update(existUser._id, {
+      isActive: true,
+      verifyToken: { value: null, expiresAt: null, resendExpiresAt: null }
+    })
+
+    return { verified: true }
   } catch (error) { throw error }
 }
 
@@ -78,13 +91,50 @@ const login = async (reqBody) => {
     const existUser = await userModel.findOneByEmail(reqBody.email)
     if (!existUser) throw new ApiError(StatusCodes.NOT_FOUND, 'Your email or password is incorrect.')
     if (!bcryptjs.compareSync(reqBody.password, existUser.password)) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your email or password is incorrect.')
-    if (!existUser.isActive) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your account is not active, please verify email.')
 
-    if (existUser.require2fa) {
+    if (existUser.isActive === false) {
+      const now = Date.now()
+
+      if (existUser.verifyToken?.resendExpiresAt && now <= existUser.verifyToken?.resendExpiresAt) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Please wait 1 minute before resending the email or logging in again.')
+      }
+
+      const newToken = uuidv4()
+      const expiresAt = now + ms(`${OTP_EXPIRE_MINUTES}m`)
+      const resendExpiresAt = now + ms(`${OTP_RESEND_EXPIRES}m`)
+
+
+      await userModel.update(existUser._id, { verifyToken: { value: newToken, expiresAt, resendExpiresAt } })
+
+      try {
+        const verificationLink = `${WEBSITE_DOMAIN}/account/verification?email=${existUser.email}&token=${newToken}`
+        const to = existUser.email
+        const toName = existUser.username
+        const subject = 'Verify Email.'
+        const templateId = MAILER_SEND_TEMPLATES_IDS.REGISTER_ACCOUNT
+        const personalizationData = [
+          {
+            email: to,
+            data: {
+              support_email: MAILER_SEND_SUPPORT_EMAIL,
+              verification_link: verificationLink
+            }
+          }
+        ]
+
+        await MailerSendProvider.sendEmail({ to, toName, subject, templateId, personalizationData })
+      } catch (error) {
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Something went wrong while sending your verification email. Please try again.')
+      }
+
+      return { email: existUser.email, password: reqBody.password, isActive: existUser.isActive }
+    }
+
+    if (existUser.require2fa === true) {
       const now = Date.now()
 
       if (existUser.otp?.resendExpiresAt && now <= existUser.otp?.resendExpiresAt) {
-        throw new ApiError(StatusCodes.BAD_REQUEST, 'Please wait 1 minute before resending the code or logging in again.')
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Please wait 1 minute before resending the email or logging in again.')
       }
 
       const otpValue = crypto.randomInt(100000, 999999).toString()

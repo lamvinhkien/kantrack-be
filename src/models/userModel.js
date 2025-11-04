@@ -14,8 +14,12 @@ const USER_COLLECTION_SCHEMA = Joi.object({
     publicId: Joi.string().required().default(null)
   }).default(null),
   isActive: Joi.boolean().default(false),
-  verifyToken: Joi.string(),
   require2fa: Joi.boolean().default(false),
+  verifyToken: Joi.object({
+    value: Joi.string().allow(null),
+    expiresAt: Joi.date().timestamp('javascript').default(null),
+    resendExpiresAt: Joi.date().timestamp('javascript').default(null)
+  }),
   otp: Joi.object({
     value: Joi.string().allow(null),
     expiresAt: Joi.date().timestamp('javascript').default(null),
