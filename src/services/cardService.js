@@ -18,6 +18,7 @@ import moment from 'moment'
 import { MailerSendProvider } from '~/providers/MailerSendProvider'
 import { userModel } from '~/models/userModel'
 import { boardModel } from '~/models/boardModel'
+import { normalizeBoardData } from '~/utils/formatters'
 
 const createNew = async (reqBody) => {
   try {
@@ -227,8 +228,11 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
 
       if (reminder?.enabled) {
         const activeRemindersOnBoard = await cardModel.countActiveRemindersByBoard(currentCard?.boardId.toString())
-        const isCurrentlyReminderOff = !currentCard.dates?.reminder?.enabled
-        if (isCurrentlyReminderOff && activeRemindersOnBoard >= MAX_REMINDERS_PER_BOARD) {
+
+        const isCurrentlyReminderOffOrSent =
+          !currentCard.dates?.reminder?.enabled || currentCard.dates?.reminder?.sent
+
+        if (isCurrentlyReminderOffOrSent && activeRemindersOnBoard >= MAX_REMINDERS_PER_BOARD) {
           throw new Error('This board has reached its email reminder limit.')
         }
       }
@@ -285,10 +289,9 @@ const deleteItem = async (cardId) => {
   } catch (error) { throw error }
 }
 
-const sendDueReminderMail = async () => {
+const sendDueReminderMail = async (io) => {
   const formatLogTime = () => moment().format('HH:mm:ss DD/MM/YYYY')
   const now = moment().toDate()
-  console.log(`[ReminderJob] (${formatLogTime()}) Started job...`)
 
   const cards = await cardModel.findAll({
     'dates.reminder.enabled': true,
@@ -298,30 +301,52 @@ const sendDueReminderMail = async () => {
   })
 
   if (!cards.length) {
-    console.log(`[ReminderJob] (${formatLogTime()}) No cards found to send reminders.`)
     return
+  }
+
+  const boardCache = new Map()
+  const getBoardDetailsCached = async (boardId) => {
+    if (boardCache.has(boardId)) return boardCache.get(boardId)
+    const rawBoard = await boardModel.getDetails(boardId)
+    const newBoard = normalizeBoardData(rawBoard)
+    boardCache.set(boardId, newBoard)
+    return newBoard
   }
 
   for (const card of cards) {
     try {
       const memberIds = card.memberIds || []
+
+      const emitUpdate = async () => {
+        const newBoard = await getBoardDetailsCached(card.boardId)
+        if (io) io.to(newBoard._id.toString()).emit('BE_UPDATE_CARD_IN_BOARD', newBoard)
+      }
+
       if (!memberIds.length) {
-        console.log(`[ReminderJob] (${formatLogTime()}) Card "${card.title}" has no members → marking as sent.`)
-        await cardModel.update(card._id, { 'dates.reminder.sent': true })
+        await cardModel.update(card._id, {
+          'dates.reminder.sent': true,
+          'dates.reminder.scheduledAt': null
+        })
+        await emitUpdate()
         continue
       }
 
       const members = await Promise.all(
         memberIds.map(async id => {
           const user = await userModel.findOneById(id.toString())
-          return user?.email ? { email: user.email, name: user.displayName || user.username || 'User' } : null
+          return user?.email
+            ? { email: user.email, name: user.displayName || user.username || 'User' }
+            : null
         })
       )
 
       const validRecipients = members.filter(Boolean)
       if (!validRecipients.length) {
-        console.log(`[ReminderJob] (${formatLogTime()}) Card "${card.title}" has no valid recipients → marking as sent.`)
-        await cardModel.update(card._id, { 'dates.reminder.sent': true })
+        await cardModel.update(card._id, {
+          'dates.reminder.sent': true,
+          'dates.reminder.scheduledAt': null
+        })
+        await emitUpdate()
         continue
       }
 
@@ -351,22 +376,25 @@ const sendDueReminderMail = async () => {
         personalizationData
       })
 
-      console.log(`[ReminderJob] (${formatLogTime()}) Successfully sent reminder for "${card.title}" to ${validRecipients.length} recipient(s).`)
+      console.log(`[ReminderJob] (${formatLogTime()}) Sent reminder for "${card.title}" to ${validRecipients.length} recipient(s).`)
 
-      await cardModel.update(card._id, { 'dates.reminder.sent': true })
+      await cardModel.update(card._id, {
+        'dates.reminder.sent': true,
+        'dates.reminder.scheduledAt': null
+      })
+      await emitUpdate()
 
       await new Promise(r => setTimeout(r, 500))
     } catch (err) {
       const message = err?.body?.message || err?.message || JSON.stringify(err)
-      console.error(`[ReminderJob] (${formatLogTime()}) Failed to send reminder for "${card.title}":`, message)
-
+      console.error(`[ReminderJob] (${formatLogTime()}) Failed for "${card.title}":`, message)
       if (message.includes('quota limit')) {
-        console.warn(`[ReminderJob] (${formatLogTime()}) Quota limit reached — stopping job until reset.`)
         break
       }
     }
   }
 }
+
 
 export const cardService = {
   createNew,

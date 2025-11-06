@@ -14,7 +14,8 @@ import { boardSocket } from './sockets/boardSocket'
 import { inviteSocket } from './sockets/inviteSocket'
 import { activeCardSocket } from './sockets/activeCardSocket'
 import { userModel } from '~/models/userModel'
-import '~/jobs/reminderJob'
+
+let io
 
 const START_SERVER = () => {
   const app = express()
@@ -25,18 +26,14 @@ const START_SERVER = () => {
   })
 
   app.use(cookieParser())
-
   app.use(cors(corsOptions))
-
   app.use(express.json())
 
   app.use('/v1', APIs_V1)
-
   app.use(errorHandlingMiddleware)
 
   const server = http.createServer(app)
-
-  const io = socketIo(server, { cors: corsOptions })
+  io = socketIo(server, { cors: corsOptions })
 
   io.on('connection', (socket) => {
     inviteSocket(socket)
@@ -48,9 +45,9 @@ const START_SERVER = () => {
     console.log(`Server running at http://${env.LOCAL_DEV_APP_HOST}:${env.LOCAL_DEV_APP_PORT}`)
   })
 
-  exitHook(() => {
-    CLOSE_DB()
-  })
+  exitHook(() => CLOSE_DB())
+
+  return io
 }
 
 (async () => {
@@ -58,9 +55,16 @@ const START_SERVER = () => {
     await CONNECT_DB()
     console.log('Connected to MongoDB Cloud Atlas.')
     await userModel.createUserIndexes()
-    START_SERVER()
+
+    const ioInstance = START_SERVER()
+
+    const { startReminderJob } = await import('~/jobs/reminderJob.js')
+    startReminderJob(ioInstance)
+
   } catch (error) {
     console.error(error)
     process.exit(0)
   }
 })()
+
+export { io }
