@@ -18,8 +18,12 @@ export const ADMIN_SENDER_NAME = 'KanTrack'
 export const OTP_EXPIRE_MINUTES = 3
 export const OTP_RESEND_EXPIRES = 1
 
-export const MAX_REMINDERS_PER_BOARD = 3
 export const MAX_JOINED_BOARDS = 12
+export const MAX_COLUMNS_PER_BOARD = 8
+export const MAX_CARDS_PER_BOARD = 40
+export const MAX_ATTACHMENTS_PER_CARD = 6
+export const MAX_REMINDERS_PER_BOARD = 4
+export const MAX_MEMBERS_PER_BOARD = 2
 
 export const CRON_REMINDER_TIME = env.BUILD_MODE === 'production' ? '0 * * * *' : '* * * * *'
 

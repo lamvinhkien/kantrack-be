@@ -8,7 +8,9 @@ import {
   WEBSITE_DOMAIN,
   MAILER_SEND_TEMPLATES_IDS,
   MAILER_SEND_SUPPORT_EMAIL,
-  MAX_REMINDERS_PER_BOARD
+  MAX_REMINDERS_PER_BOARD,
+  MAX_ATTACHMENTS_PER_CARD,
+  MAX_CARDS_PER_BOARD
 } from '~/utils/constants'
 import { v4 as uuidv4 } from 'uuid'
 import { normalizeFileName } from '~/utils/formatters'
@@ -24,6 +26,12 @@ const createNew = async (reqBody) => {
   try {
     const newCard = {
       ...reqBody
+    }
+
+    const countCard = await cardModel.countCardInBoard(newCard.boardId)
+
+    if (countCard >= MAX_CARDS_PER_BOARD) {
+      throw new Error('This board has reached its card limit.')
     }
 
     const createdCard = await cardModel.createNew(newCard)
@@ -97,7 +105,7 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
     // ------------------- UPLOAD ATTACHMENTS -------------------
     if (Array.isArray(cardAttachmentFiles) && cardAttachmentFiles.length > 0) {
       const existingFiles = currentCard.attachments.filter(a => a.type === 'file')
-      if (cardAttachmentFiles.length + existingFiles.length > 10) throw new ApiError(StatusCodes.FORBIDDEN, 'Card has reached the limit of 10 file attachments.')
+      if (cardAttachmentFiles.length + existingFiles.length > MAX_ATTACHMENTS_PER_CARD) throw new ApiError(StatusCodes.FORBIDDEN, 'Card has reached the limit of 6 file attachments.')
 
       const uploads = await Promise.all(
         cardAttachmentFiles.map(file =>

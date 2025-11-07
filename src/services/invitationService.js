@@ -3,7 +3,7 @@ import ApiError from '~/utils/ApiError'
 import { userModel } from '~/models/userModel'
 import { boardModel } from '~/models/boardModel'
 import { invitationModel } from '~/models/invitationModel'
-import { INVITATION_TYPES, BOARD_INVITATION_STATUS } from '~/utils/constants'
+import { INVITATION_TYPES, BOARD_INVITATION_STATUS, MAX_MEMBERS_PER_BOARD } from '~/utils/constants'
 import { pickUser } from '~/utils/formatters'
 
 const createNewBoardInvitation = async (reqBody, inviterId) => {
@@ -11,12 +11,20 @@ const createNewBoardInvitation = async (reqBody, inviterId) => {
     const inviter = await userModel.findOneById(inviterId)
     const invitee = await userModel.findOneByEmail(reqBody.inviteeEmail)
     const board = await boardModel.findOneById(reqBody.boardId)
-    const boardOwnerAndMemberIds = [...board.ownerIds, ...board.memberIds].toString()
 
     if (!invitee) throw new ApiError(StatusCodes.NOT_FOUND, 'Invitee not found.')
     if (!inviter || !board) throw new ApiError(StatusCodes.NOT_FOUND, 'Inviter or Board not found.')
 
-    if (boardOwnerAndMemberIds.includes(invitee._id.toString())) {
+    const totalBoardMembers = [...board.ownerIds, ...board.memberIds]
+
+    if (totalBoardMembers.length >= MAX_MEMBERS_PER_BOARD) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        'This board has reached the maximum number of members allowed.'
+      )
+    }
+
+    if (totalBoardMembers.map(id => id.toString()).includes(invitee._id.toString())) {
       throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Invitee is already a member of this board.')
     }
 
@@ -24,7 +32,6 @@ const createNewBoardInvitation = async (reqBody, inviterId) => {
       reqBody.boardId,
       invitee._id
     )
-
     if (existingPendingInvitation) {
       throw new ApiError(
         StatusCodes.CONFLICT,
@@ -77,25 +84,38 @@ const updateBoardInvitation = async (userId, invitationId, status) => {
     const getBoard = await boardModel.findOneById(boardId)
     if (!getBoard) throw new ApiError(StatusCodes.NOT_FOUND, 'Board not found.')
 
-    const boardOwnerAndMemberIds = [...getBoard.ownerIds, ...getBoard.memberIds].toString()
-    if (boardOwnerAndMemberIds.includes(userId)) {
+    const boardOwnerAndMemberIds = [...getBoard.ownerIds, ...getBoard.memberIds].map(id => id.toString())
+
+    if (boardOwnerAndMemberIds.includes(userId.toString())) {
       throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'You are already a member of this board.')
+    }
+
+    if (status === BOARD_INVITATION_STATUS.ACCEPTED) {
+      if (boardOwnerAndMemberIds.length >= MAX_MEMBERS_PER_BOARD) {
+        throw new ApiError(
+          StatusCodes.FORBIDDEN,
+          'This board has reached the maximum number of members allowed.'
+        )
+      }
     }
 
     const updateData = {
       boardInvitation: {
         ...getInvitation.boardInvitation,
-        status: status
+        status
       }
     }
 
     const updatedInvitation = await invitationModel.update(invitationId, updateData)
+
     if (updatedInvitation.boardInvitation.status === BOARD_INVITATION_STATUS.ACCEPTED) {
       await boardModel.pushMemberIds(boardId, userId)
     }
 
     return updatedInvitation
-  } catch (error) { throw error }
+  } catch (error) {
+    throw error
+  }
 }
 
 export const invitationService = {

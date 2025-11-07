@@ -93,6 +93,15 @@ const deleteManyByBoardId = async (boardId) => {
   } catch (error) { throw new Error(error) }
 }
 
+const countColumnInBoard = async (boardId) => {
+  try {
+    return await GET_DB().collection(COLUMN_COLLECTION_NAME).countDocuments({
+      boardId: new ObjectId(boardId),
+      _destroy: false
+    })
+  } catch (error) { throw new Error(error) }
+}
+
 export const columnModel = {
   COLUMN_COLLECTION_NAME,
   COLUMN_COLLECTION_SCHEMA,
@@ -103,5 +112,6 @@ export const columnModel = {
   pullCardOrderIds,
   update,
   deleteOneById,
-  deleteManyByBoardId
+  deleteManyByBoardId,
+  countColumnInBoard
 }

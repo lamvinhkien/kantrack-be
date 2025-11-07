@@ -4,11 +4,18 @@ import { cardModel } from '~/models/cardModel'
 import ApiError from '~/utils/ApiError'
 import { StatusCodes } from 'http-status-codes'
 import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
+import { MAX_COLUMNS_PER_BOARD } from '~/utils/constants'
 
 const createNew = async (reqBody) => {
   try {
     const newColumn = {
       ...reqBody
+    }
+
+    const countColumn = await columnModel.countColumnInBoard(newColumn.boardId)
+
+    if (countColumn >= MAX_COLUMNS_PER_BOARD) {
+      throw new Error('This board has reached its column limit.')
     }
 
     const createdColumn = await columnModel.createNew(newColumn)

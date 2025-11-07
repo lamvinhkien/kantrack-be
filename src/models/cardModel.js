@@ -188,6 +188,15 @@ const countActiveRemindersByBoard = async (boardId) => {
   } catch (error) { throw new Error(error) }
 }
 
+const countCardInBoard = async (boardId) => {
+  try {
+    return await GET_DB().collection(CARD_COLLECTION_NAME).countDocuments({
+      boardId: new ObjectId(boardId),
+      _destroy: false
+    })
+  } catch (error) { throw new Error(error) }
+}
+
 export const cardModel = {
   CARD_COLLECTION_NAME,
   CARD_COLLECTION_SCHEMA,
@@ -201,5 +210,6 @@ export const cardModel = {
   updateMembers,
   unshiftNewAttachments,
   deleteOneById,
-  countActiveRemindersByBoard
+  countActiveRemindersByBoard,
+  countCardInBoard
 }
