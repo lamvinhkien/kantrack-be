@@ -20,7 +20,7 @@ const createNewBoardInvitation = async (reqBody, inviterId) => {
     if (totalBoardMembers.length >= MAX_MEMBERS_PER_BOARD) {
       throw new ApiError(
         StatusCodes.FORBIDDEN,
-        'This board has reached the maximum number of members allowed.'
+        'This board has reached its member limit.'
       )
     }
 
@@ -94,7 +94,7 @@ const updateBoardInvitation = async (userId, invitationId, status) => {
       if (boardOwnerAndMemberIds.length >= MAX_MEMBERS_PER_BOARD) {
         throw new ApiError(
           StatusCodes.FORBIDDEN,
-          'This board has reached the maximum number of members allowed.'
+          'This board has reached its member limit.'
         )
       }
     }

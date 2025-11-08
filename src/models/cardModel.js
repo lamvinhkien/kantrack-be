@@ -30,7 +30,7 @@ const CARD_COLLECTION_SCHEMA = Joi.object({
   comments: Joi.array().items({
     commentId: Joi.string().required(),
     userId: Joi.string().required().pattern(OBJECT_ID_RULE).message(OBJECT_ID_RULE_MESSAGE),
-    content: Joi.string().required().min(1).max(500).trim().strict(),
+    content: Joi.string().required().min(1).max(200).trim().strict(),
     commentedAt: Joi.date().timestamp('javascript').allow(null).default(null)
   }).default([]),
   dates: Joi.object({
@@ -197,6 +197,18 @@ const countCardInBoard = async (boardId) => {
   } catch (error) { throw new Error(error) }
 }
 
+const countCommentsInCard = async (cardId) => {
+  try {
+    const card = await GET_DB().collection(CARD_COLLECTION_NAME).findOne(
+      { _id: new ObjectId(cardId) },
+      { projection: { comments: 1 } }
+    )
+
+    if (!card || !Array.isArray(card.comments)) return 0
+    return card.comments.length
+  } catch (error) { throw new Error(error) }
+}
+
 export const cardModel = {
   CARD_COLLECTION_NAME,
   CARD_COLLECTION_SCHEMA,
@@ -211,5 +223,6 @@ export const cardModel = {
   unshiftNewAttachments,
   deleteOneById,
   countActiveRemindersByBoard,
-  countCardInBoard
+  countCardInBoard,
+  countCommentsInCard
 }

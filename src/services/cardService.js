@@ -10,7 +10,8 @@ import {
   MAILER_SEND_SUPPORT_EMAIL,
   MAX_REMINDERS_PER_BOARD,
   MAX_ATTACHMENTS_PER_CARD,
-  MAX_CARDS_PER_BOARD
+  MAX_CARDS_PER_BOARD,
+  MAX_COMMENTS_PER_CARD
 } from '~/utils/constants'
 import { v4 as uuidv4 } from 'uuid'
 import { normalizeFileName } from '~/utils/formatters'
@@ -105,7 +106,9 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
     // ------------------- UPLOAD ATTACHMENTS -------------------
     if (Array.isArray(cardAttachmentFiles) && cardAttachmentFiles.length > 0) {
       const existingFiles = currentCard.attachments.filter(a => a.type === 'file')
-      if (cardAttachmentFiles.length + existingFiles.length > MAX_ATTACHMENTS_PER_CARD) throw new ApiError(StatusCodes.FORBIDDEN, 'Card has reached the limit of 6 file attachments.')
+      if (cardAttachmentFiles.length + existingFiles.length > MAX_ATTACHMENTS_PER_CARD) {
+        throw new ApiError(StatusCodes.FORBIDDEN, 'File attachment limit reached for this card.')
+      }
 
       const uploads = await Promise.all(
         cardAttachmentFiles.map(file =>
@@ -152,12 +155,18 @@ const update = async (cardId, reqBody, cardCoverFile, cardAttachmentFiles, userI
       const comments = Array.isArray(currentCard.comments) ? currentCard.comments : []
 
       if (action === CARD_COMMENT_ACTIONS.ADD) {
+        const totalComments = await cardModel.countCommentsInCard(cardId)
+        if (totalComments >= MAX_COMMENTS_PER_CARD) {
+          throw new ApiError(StatusCodes.BAD_REQUEST, 'Comment limit reached for this card.')
+        }
+
         const newComment = {
           commentId: uuidv4(),
           userId: userInfo._id,
           content: comment.content.trim(),
           commentedAt: Date.now()
         }
+
         return await cardModel.unshiftNewComment(cardId, newComment)
       }
 
