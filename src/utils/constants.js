@@ -29,7 +29,7 @@ export const MAX_MEMBERS_PER_BOARD = 8
 export const CRON_REMINDER_TIME = env.BUILD_MODE === 'production' ? '0 * * * *' : '* * * * *'
 
 export const DEFAULT_PAGE = 1
-export const DEFAULT_ITEMS_PER_PAGE = 6
+export const DEFAULT_ITEMS_PER_PAGE = 4
 
 export const INVITATION_TYPES = { BOARD_INVITATION: 'BOARD_INVITATION' }
 export const BOARD_INVITATION_STATUS = { PENDING: 'PENDING', ACCEPTED: 'ACCEPTED', REJECTED: 'REJECTED' }
