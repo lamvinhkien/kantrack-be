@@ -324,10 +324,22 @@ const getRecentBoards = async (userId) => {
 
     const boards = await boardModel.getBoardsByIds(boardIds)
 
-    const boardsMap = new Map(boards.map(b => [b._id.toString(), b]))
+    const boardsMap = new Map(
+      boards.map(b => [b._id.toString(), b])
+    )
+
     return user.recentBoards
-      .map(item => boardsMap.get(item.boardId))
+      .map(item => {
+        const board = boardsMap.get(item.boardId.toString())
+        if (!board) return null
+
+        return {
+          ...board,
+          viewedAt: item.viewedAt
+        }
+      })
       .filter(Boolean)
+
   } catch (error) {
     throw error
   }
