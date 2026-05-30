@@ -1,7 +1,7 @@
 import { env } from '~/config/environment'
 
 export const WEBSITE_DOMAIN = env.BUILD_MODE === 'production' ? env.WEBSITE_DOMAIN_PROD : env.WEBSITE_DOMAIN_DEV
-export const WHITELIST_DOMAINS = [env.WEBSITE_DOMAIN_DEV]
+export const WHITELIST_DOMAINS = [env.WEBSITE_DOMAIN_DEV, env.WEBSITE_DOMAIN_PROD]
 
 export const BOARD_TYPES = { PUBLIC: 'public', PRIVATE: 'private' }
 
