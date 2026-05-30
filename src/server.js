@@ -41,10 +41,12 @@ const START_SERVER = () => {
     activeCardSocket(socket)
   })
 
-  server.listen(env.LOCAL_DEV_APP_PORT, env.LOCAL_DEV_APP_HOST, () => {
-    console.log(`Server running at http://${env.LOCAL_DEV_APP_HOST}:${env.LOCAL_DEV_APP_PORT}`)
-  })
+  const port = env.LOCAL_DEV_APP_PORT || 8017
+  const host = env.BUILD_MODE === 'production' ? '0.0.0.0' : (env.LOCAL_DEV_APP_HOST || 'localhost')
 
+  server.listen(port, host, () => {
+    console.log(`Server running production successfully at http://${host}:${port}`)
+  })
   exitHook(() => CLOSE_DB())
 
   return io
