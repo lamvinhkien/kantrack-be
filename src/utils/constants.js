@@ -6,9 +6,9 @@ export const WHITELIST_DOMAINS = [env.WEBSITE_DOMAIN_DEV]
 export const BOARD_TYPES = { PUBLIC: 'public', PRIVATE: 'private' }
 
 export const MAILER_SEND_TEMPLATES_IDS = {
-  REGISTER_ACCOUNT: 'z3m5jgry3704dpyo',
-  OTP_CODE: 'neqvygmeqrw40p7w',
-  TASK_REMINDER: 'zr6ke4njdeygon12'
+  REGISTER_ACCOUNT: 'pq3enl63xd5l2vwr',
+  OTP_CODE: 'neqvygmyn7zg0p7w',
+  TASK_REMINDER: '351ndgw5rmxgzqx8'
 }
 
 export const MAILER_SEND_SUPPORT_EMAIL = 'lamvinhkien1709@gmail.com'
