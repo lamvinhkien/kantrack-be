@@ -29,6 +29,11 @@ const START_SERVER = () => {
   app.use(cors(corsOptions))
   app.use(express.json())
 
+  // ping route for free render
+  app.get('/ping', (req, res) => {
+    res.status(200).send('Server is alive!')
+  })
+
   app.use('/v1', APIs_V1)
   app.use(errorHandlingMiddleware)
 
