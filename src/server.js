@@ -20,6 +20,11 @@ let io
 const START_SERVER = () => {
   const app = express()
 
+  // ping route for free render
+  app.get('/ping', (req, res) => {
+    res.status(200).send('Server is alive!')
+  })
+
   app.use((req, res, next) => {
     res.set('Cache-Control', 'no-store')
     next()
@@ -28,11 +33,6 @@ const START_SERVER = () => {
   app.use(cookieParser())
   app.use(cors(corsOptions))
   app.use(express.json())
-
-  // ping route for free render
-  app.get('/ping', (req, res) => {
-    res.status(200).send('Server is alive!')
-  })
 
   app.use('/v1', APIs_V1)
   app.use(errorHandlingMiddleware)
